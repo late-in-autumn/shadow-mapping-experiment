@@ -69,6 +69,7 @@ typedef struct {
 	GzCoord normal;
 	GzColor color;
 	GzTextureIndex uv;
+	GzTextureIndex shadow;
 } Point;
 
 int CompareVertices(const void* left, const void* right);
@@ -131,12 +132,15 @@ public:
 	int GzTrxMat(GzCoord translate, GzMatrix mat);
 	int GzScaleMat(GzCoord scale, GzMatrix mat);
 
+	int GzGetXimage(GzMatrix out);
+
 private:
 	typedef struct {
 		GzCoord	coord;
 		GzCoord normal;
 		GzColor color;
 		GzTextureIndex uv;
+		GzTextureIndex shadow;
 	} GzVertex;
 
 	typedef struct {
@@ -207,10 +211,11 @@ private:
 	void ComputeNormalPlaneEquasion(GzNormalPlane* p);
 	void ComputeColorPlaneEquasions(GzPlane* pr, GzPlane* pg, GzPlane* pb);
 	void ComputeUvPlaneEquasion(GzUvPlane* p);
+	void ComputeShadowPlaneEquasion(GzUvPlane* p);
 	void FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 		GzPlane* p, GzPlane* r, GzPlane* g, GzPlane* b,
-		GzNormalPlane* n, GzUvPlane* uv, long start[2], long end[2]);
-	void TranslateVertex(GzVertex* v);
+		GzNormalPlane* n, GzUvPlane* uv, GzUvPlane* shadow, long start[2], long end[2]);
+	void TranslateVertex(GzVertex* v, GzMatrix ximage, GzMatrix xnorm, GzMatrix xshadow);
 	void CrossProduct(GzCoord a, GzCoord b, GzCoord result);
 	void NormalizeVector(long size, float v[]);
 	void MultiplyMatrices(GzMatrix a, GzMatrix b, GzMatrix result);
