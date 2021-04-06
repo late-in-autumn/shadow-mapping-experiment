@@ -62,7 +62,6 @@ int GzRender::GzTrxMat(GzCoord translate, GzMatrix mat)
 	return GZ_SUCCESS;
 }
 
-
 int GzRender::GzScaleMat(GzCoord scale, GzMatrix mat)
 {
 	memset(mat, 0, sizeof(GzMatrix));
@@ -74,6 +73,13 @@ int GzRender::GzScaleMat(GzCoord scale, GzMatrix mat)
 	return GZ_SUCCESS;
 }
 
+int GzRender::GzGetXimage(GzMatrix out)
+{
+	if (matlevel = -1 || matlevel >= MATLEVELS) return GZ_FAILURE;
+
+	memcpy(out, Ximage[matlevel], sizeof(GzMatrix));
+	return GZ_SUCCESS;
+}
 
 GzRender::GzRender(int xRes, int yRes)
 {
@@ -456,9 +462,9 @@ void GzRender::RenderTriangle(GzVertex* v1, GzVertex* v2, GzVertex* v3)
 	t2 = *v2;
 	t3 = *v3;
 
-	TranslateVertex(&t1);
-	TranslateVertex(&t2);
-	TranslateVertex(&t3);
+	TranslateVertex(&t1, Ximage[matlevel], Xnorm[matlevel], const_cast<GzMatrix&>(IDENTITY));
+	TranslateVertex(&t2, Ximage[matlevel], Xnorm[matlevel], const_cast<GzMatrix&>(IDENTITY));
+	TranslateVertex(&t3, Ximage[matlevel], Xnorm[matlevel], const_cast<GzMatrix&>(IDENTITY));
 
 	if (FP_LESS(t1.coord[2], 0.0f, FLT_EPSILON) || FP_LESS(t2.coord[2], 0.0f, FLT_EPSILON) || FP_LESS(t3.coord[2], 0.0f, FLT_EPSILON)) return;
 
@@ -472,7 +478,7 @@ void GzRender::LinearEvaulator(GzVertex* v1, GzVertex* v2, GzVertex* v3)
 	GzEdge ac{}, e1{}, e2{}, e3{};
 	GzPlane plane{}, pr{}, pg{}, pb{};
 	GzNormalPlane pn{};
-	GzUvPlane puv{};
+	GzUvPlane puv{}, pshadow{};
 	long start[2]{}, end[2]{};
 
 	// step 1: populate the vertices
@@ -596,13 +602,18 @@ void GzRender::LinearEvaulator(GzVertex* v1, GzVertex* v2, GzVertex* v3)
 	puv.p2 = e2.start;
 	puv.p3 = e3.start;
 
+	pshadow.p1 = e1.start;
+	pshadow.p2 = e2.start;
+	pshadow.p3 = e3.start;
+
 	ComputePlaneEquasion(&plane);
 	ComputeColorPlaneEquasions(&pr, &pg, &pb);
 	ComputeNormalPlaneEquasion(&pn);
 	ComputeUvPlaneEquasion(&puv);
+	ComputeShadowPlaneEquasion(&pshadow);
 
 	// step 9: fill the bound box
-	FillBoundBox(&e1, &e2, &e3, &plane, &pr, &pg, &pb, &pn, &puv, start, end);
+	FillBoundBox(&e1, &e2, &e3, &plane, &pr, &pg, &pb, &pn, &puv, &pshadow, start, end);
 }
 
 void GzRender::SortVertices(GzVertex* v1, GzVertex* v2, GzVertex* v3)
@@ -814,9 +825,46 @@ void GzRender::ComputeUvPlaneEquasion(GzUvPlane* p)
 	p->dv = -(p->cv * p->p2.uv[1]) - (p->bv * p->p2.coord[1]) - (p->av * p->p2.coord[0]);
 }
 
+void GzRender::ComputeShadowPlaneEquasion(GzUvPlane* p)
+{
+	GzCoord v1{};
+	GzCoord v2{};
+	GzCoord product{};
+
+	v1[0] = p->p2.coord[0] - p->p1.coord[0];
+	v1[1] = p->p2.coord[1] - p->p1.coord[1];
+	v1[2] = p->p2.shadow[0] - p->p1.shadow[0];
+
+	v2[0] = p->p3.coord[0] - p->p2.coord[0];
+	v2[1] = p->p3.coord[1] - p->p2.coord[1];
+	v2[2] = p->p3.shadow[0] - p->p2.shadow[0];
+
+	CrossProduct(v1, v2, product);
+
+	p->au = product[0];
+	p->bu = product[1];
+	p->cu = product[2];
+	p->du = -(p->cu * p->p2.shadow[0]) - (p->bu * p->p2.coord[1]) - (p->au * p->p2.coord[0]);
+
+	v1[0] = p->p2.coord[0] - p->p1.coord[0];
+	v1[1] = p->p2.coord[1] - p->p1.coord[1];
+	v1[2] = p->p2.shadow[1] - p->p1.shadow[1];
+
+	v2[0] = p->p3.coord[0] - p->p2.coord[0];
+	v2[1] = p->p3.coord[1] - p->p2.coord[1];
+	v2[2] = p->p3.shadow[1] - p->p2.shadow[1];
+
+	CrossProduct(v1, v2, product);
+
+	p->av = product[0];
+	p->bv = product[1];
+	p->cv = product[2];
+	p->dv = -(p->cv * p->p2.shadow[1]) - (p->bv * p->p2.coord[1]) - (p->av * p->p2.coord[0]);
+}
+
 void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 	GzPlane* p, GzPlane* r, GzPlane* g, GzPlane* b,
-	GzNormalPlane* n, GzUvPlane* uv, long start[2], long end[2])
+	GzNormalPlane* n, GzUvPlane* uv, GzUvPlane* shadow, long start[2], long end[2])
 {
 	float edgeEval[3]{};
 	GzIntensity rValue, gValue, bValue, aValue;
@@ -892,7 +940,7 @@ void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 		}
 }
 
-void GzRender::TranslateVertex(GzVertex* v)
+void GzRender::TranslateVertex(GzVertex* v, GzMatrix ximage, GzMatrix xnorm, GzMatrix xshadow)
 {
 	float input[4]{}, output[4]{};
 
@@ -903,7 +951,7 @@ void GzRender::TranslateVertex(GzVertex* v)
 	memset(output, 0, sizeof(GzCoord));
 	for (int i = 0; i < 4; i++)
 		for (int j = 0; j < 4; j++)
-			output[i] += Ximage[matlevel][i][j] * input[j];
+			output[i] += ximage[i][j] * input[j];
 
 	v->coord[0] = (output[0] / output[3]) + currentOffset[0];
 	v->coord[1] = (output[1] / output[3]) + currentOffset[1];
@@ -916,7 +964,7 @@ void GzRender::TranslateVertex(GzVertex* v)
 	memset(output, 0, sizeof(GzCoord));
 	for (int i = 0; i < 4; i++)
 		for (int j = 0; j < 4; j++)
-			output[i] += Xnorm[matlevel][i][j] * input[j];
+			output[i] += xnorm[i][j] * input[j];
 
 	v->normal[0] = output[0] / output[3];
 	v->normal[1] = output[1] / output[3];
@@ -927,6 +975,18 @@ void GzRender::TranslateVertex(GzVertex* v)
 	// translate UV
 	v->uv[0] /= ComputeWrapFactor(v->coord[2]);
 	v->uv[1] /= ComputeWrapFactor(v->coord[2]);
+
+	// translate shadow index
+	memcpy(input, v->coord, sizeof(GzCoord));
+	input[3] = 1;
+
+	memset(output, 0, sizeof(GzCoord));
+	for (int i = 0; i < 4; i++)
+		for (int j = 0; j < 4; j++)
+			output[i] += xshadow[i][j] * input[j];
+
+	v->shadow[0] = output[0] / output[3];
+	v->shadow[1] = output[1] / output[3];
 }
 
 void GzRender::CrossProduct(GzCoord a, GzCoord b, GzCoord result)
