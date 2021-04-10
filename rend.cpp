@@ -925,7 +925,7 @@ void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 						vCurrent.color[1] = (e1->start.color[1] + e2->start.color[1] + e3->start.color[1]) / 3;
 						vCurrent.color[2] = (e1->start.color[2] + e2->start.color[2] + e3->start.color[2]) / 3;
 						break;
-					case GZ_DEPTHMAP:
+					case GZ_SHADOWMAP:
 						vCurrent.color[0] = vCurrent.coord[2] / static_cast<float>(INT_MAX);
 						vCurrent.color[1] = vCurrent.coord[2] / static_cast<float>(INT_MAX);
 						vCurrent.color[2] = vCurrent.coord[2] / static_cast<float>(INT_MAX);

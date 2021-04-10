@@ -43,7 +43,7 @@
 #define GZ_FLAT			0	/* flat shading with GZ_RBG_COLOR */
 #define	GZ_COLOR		1	/* interpolate vertex color */
 #define	GZ_NORMALS		2	/* interpolate normals */
-#define GZ_DEPTHMAP		3	/* no color calculation, reserved for depth mapping */
+#define GZ_SHADOWMAP		3	/* no color calculation, reserved for depth mapping */
 
 typedef int     GzToken;
 typedef void* GzPointer;
