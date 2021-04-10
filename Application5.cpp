@@ -100,10 +100,29 @@ int Application5::Initialize()
 	};
 
 #if 1 	/* set up app-defined camera if desired, else use camera defaults */
-	camera.position[X] = -3;
-	camera.position[Y] = -25;
-	camera.position[Z] = -4;
-
+	
+	/* The depthmap is currently only rendered with 1 light source -- light1.
+	   From HW, light1 is positioned at [x, y, z] = [-0.7071, 0.7071, 0];
+	   In order to capture all the components in the scene, the z-position 
+	   will need to be changed to -40. All the other camera parameters remain 
+	   the same as HW.
+	   So, rendering the scene from the light source perspective, the camera 
+	   will need to be positioned at: 
+	   		camera.position[X] = -0.7071;
+			camera.position[Y] = 0.7071;
+			camera.position[Z] = -40;
+	   
+	   NOTE: When rendering the scene from the regular camera perspective, 
+	   	 use the following camera position (same as HW);
+		 	camera.position[X] = -3;
+		 	camera.position[Y] = -25;
+		 	camera.position[Z] = -4;
+	*/
+	
+	camera.position[X] = -0.7071;
+	camera.position[Y] = 0.7071;
+	camera.position[Z] = -40;
+	
 	camera.lookat[X] = 7.8;
 	camera.lookat[Y] = 0.7;
 	camera.lookat[Z] = 6.5;
@@ -112,7 +131,7 @@ int Application5::Initialize()
 	camera.worldup[Y] = 1.0;
 	camera.worldup[Z] = 0.0;
 
-	camera.FOV = 63.7;              /* degrees *              /* degrees */
+	camera.FOV = 63.7;              /* degrees */
 
 	status |= m_pRender->GzPutCamera(camera);
 #endif 
@@ -120,10 +139,15 @@ int Application5::Initialize()
 	/* Start Renderer */
 	status |= m_pRender->GzBeginRender();
 
+	/* Since we are rendering the depthmap with only light1 (for now), 
+	   below are light2 and light3 parameters from HW for reference if 
+	   needed later on.
+	   GzLight light2 = { {0, -0.7071, -0.7071}, {0.9, 0.2, 0.3} };
+	   GzLight light3 = { {0.7071, 0.0, -0.7071}, {0.2, 0.7, 0.3} };
+	*/
+	   
 	/* Light */
-	GzLight	light1 = { {-0.7071, 0.7071, 0}, {0.5, 0.5, 0.9} };
-	GzLight	light2 = { {0, -0.7071, -0.7071}, {0.9, 0.2, 0.3} };
-	GzLight	light3 = { {0.7071, 0.0, -0.7071}, {0.2, 0.7, 0.3} };
+	GzLight	light1 = { {-0.7071, 0.7071, -40}, {0.5, 0.5, 0.9} };		// z-position is updated to match that of camera-position.
 	GzLight	ambientlight = { {0, 0, 0}, {0.3, 0.3, 0.3} };
 
 	/* Material property */
@@ -140,11 +164,15 @@ int Application5::Initialize()
 	 */
 	nameListLights[0] = GZ_DIRECTIONAL_LIGHT;
 	valueListLights[0] = (GzPointer)&light1;
+	status |= m_pRender->GzPutAttribute(1, nameListLights, valueListLights);
+	
+	/* In case, we decide to work with multiple light sources later on.
 	nameListLights[1] = GZ_DIRECTIONAL_LIGHT;
 	valueListLights[1] = (GzPointer)&light2;
 	nameListLights[2] = GZ_DIRECTIONAL_LIGHT;
 	valueListLights[2] = (GzPointer)&light3;
 	status |= m_pRender->GzPutAttribute(3, nameListLights, valueListLights);
+	*/
 
 	nameListLights[0] = GZ_AMBIENT_LIGHT;
 	valueListLights[0] = (GzPointer)&ambientlight;
@@ -160,8 +188,10 @@ int Application5::Initialize()
 	* Select either GZ_COLOR or GZ_NORMALS as interpolation mode
 	*/
 	nameListShader[1] = GZ_INTERPOLATE;
-	interpStyle = GZ_COLOR;         /* Gouraud shading */
+	//interpStyle = GZ_COLOR;         /* Gouraud shading */
 	//interpStyle = GZ_NORMALS;         /* Phong shading */
+	interpStyle = GZ_DEPTHMAP;	/* For depthmap/shadow mapping */
+	
 	valueListShader[1] = (GzPointer)&interpStyle;
 
 	nameListShader[2] = GZ_AMBIENT_COEFFICIENT;
