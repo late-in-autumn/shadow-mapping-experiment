@@ -12,20 +12,21 @@
 #include "Gz.h"
 #include "rend.h"
 
-class Application  
+class Application
 {
 public:
 	Application();
 	virtual ~Application();
-	
+
 public:
-	GzRender*  m_pRender;		// the renderer
-	GzInput*   m_pUserInput;
+	GzRender* m_pRender;		// the renderer
+	GzRender* m_pShadowMapRender;
+	GzInput* m_pUserInput;
 	char* m_pFrameBuffer;	// Frame Buffer
 	int   m_nWidth;			// width of Frame Buffer
 	int   m_nHeight;		// height of Frame Buffer
 
-	virtual int Render()=0; // Pass user input data and call renderer
+	virtual int Render() = 0; // Pass user input data and call renderer
 };
 
 #endif // !defined(AFX_APPLICATION_H__3387B79A_B69F_491D_B782_81D9CAFAAB0F__INCLUDED_)

@@ -80,20 +80,22 @@ public:
 	unsigned short	yres;
 	GzPixel* pixelbuffer;		/* frame buffer array */
 	char* framebuffer;
+	GzRender* shadow_map_renderer;
 
-	GzCamera		m_camera;
-	short		    matlevel;	        /* top of stack - current xform */
-	GzMatrix		Ximage[MATLEVELS];	/* stack of xforms (Xsm) */
-	GzMatrix		Xnorm[MATLEVELS];	/* xforms for norms (Xim) */
-	GzMatrix		Xsp;		        /* NDC to screen (pers-to-screen) */
+	GzCamera	m_camera;
+	short		matlevel;	        /* top of stack - current xform */
+	GzMatrix	Ximage[MATLEVELS];	/* stack of xforms (Xsm) */
+	GzMatrix	Xnorm[MATLEVELS];	/* xforms for norms (Xim) */
+	GzMatrix	Xsp;		        /* NDC to screen (pers-to-screen) */
+	GzMatrix	Xshadow;		// the shadow space transformation matrix required for shadow mapping
 	GzColor		flatcolor;          /* color state for flat shaded triangles */
 	int			interp_mode;
 	int			numlights;
 	GzLight		lights[MAX_LIGHTS];
 	GzLight		ambientlight;
 	GzColor		Ka, Kd, Ks;
-	float		    spec;		/* specular power */
-	GzTexture		tex_fun;    /* tex_fun(float u, float v, GzColor color) */
+	float		spec;		/* specular power */
+	GzTexture	tex_fun;    /* tex_fun(float u, float v, GzColor color) */
 
 	// Constructors
 	GzRender(int xRes, int yRes);
@@ -132,7 +134,9 @@ public:
 	int GzTrxMat(GzCoord translate, GzMatrix mat);
 	int GzScaleMat(GzCoord scale, GzMatrix mat);
 
+	// methods needed for shadow mapping
 	int GzGetXimage(GzMatrix out);
+	int GzSetShadowRenderer(GzRender* renderer);
 
 private:
 	typedef struct {
@@ -198,7 +202,7 @@ private:
 	typedef float GzOffsetsXY[3];
 
 	GzTriangle currentTriangle;
-	GzOffsetsXY currentOffset = { 0.0f, 0.0f };
+	GzOffsetsXY currentOffset;
 
 	// renderer subroutines
 	void UpdateCameraMatrices();

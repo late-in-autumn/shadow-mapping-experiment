@@ -8,6 +8,7 @@
 #include	<algorithm>
 #include	<fstream>
 #include	<new>
+#include	<string>
 
 int GzRender::GzRotXMat(float degree, GzMatrix mat)
 {
@@ -75,9 +76,22 @@ int GzRender::GzScaleMat(GzCoord scale, GzMatrix mat)
 
 int GzRender::GzGetXimage(GzMatrix out)
 {
-	if (matlevel = -1 || matlevel >= MATLEVELS) return GZ_FAILURE;
+	if (matlevel == -1 || matlevel >= MATLEVELS)
+	{
+		OutputDebugStringA(("Get Ximage failed: matlevel (" + std::to_string(matlevel) + ") out of bound\n").c_str());
+		return GZ_FAILURE;
+	}
 
 	memcpy(out, Ximage[matlevel], sizeof(GzMatrix));
+	return GZ_SUCCESS;
+}
+
+int GzRender::GzSetShadowRenderer(GzRender* renderer)
+{
+	if (renderer == nullptr) return GZ_FAILURE;
+
+	shadow_map_renderer = renderer;
+	shadow_map_renderer->GzGetXimage(Xshadow);
 	return GZ_SUCCESS;
 }
 
@@ -118,8 +132,12 @@ GzRender::~GzRender()
 
 int GzRender::GzDefault()
 {
-	// initialize current triangle
+	// set the shadow renderer to null
+	shadow_map_renderer = nullptr;
+
+	// initialize current triangle and current offset
 	memset(currentTriangle, 0, sizeof(GzTriangle));
+	memset(currentOffset, 0, sizeof(GzOffsetsXY));
 
 	// initialize everything to white and max z distance
 	for (int offset = 0; offset < xres * yres; offset++)
@@ -131,7 +149,10 @@ int GzRender::GzDefault()
 		(pixelbuffer + offset)->z = INT_MAX;
 	}
 
-	// update the frame buffer accordingly
+	// initialize the current Xshadow to identity matrix
+	memcpy(Xshadow, IDENTITY, sizeof(GzMatrix));
+
+	// update the framebuffer accordingly
 	GzFlushDisplay2FrameBuffer();
 
 	return GZ_SUCCESS;
@@ -462,9 +483,9 @@ void GzRender::RenderTriangle(GzVertex* v1, GzVertex* v2, GzVertex* v3)
 	t2 = *v2;
 	t3 = *v3;
 
-	TranslateVertex(&t1, Ximage[matlevel], Xnorm[matlevel], const_cast<GzMatrix&>(IDENTITY));
-	TranslateVertex(&t2, Ximage[matlevel], Xnorm[matlevel], const_cast<GzMatrix&>(IDENTITY));
-	TranslateVertex(&t3, Ximage[matlevel], Xnorm[matlevel], const_cast<GzMatrix&>(IDENTITY));
+	TranslateVertex(&t1, Ximage[matlevel], Xnorm[matlevel], Xshadow);
+	TranslateVertex(&t2, Ximage[matlevel], Xnorm[matlevel], Xshadow);
+	TranslateVertex(&t3, Ximage[matlevel], Xnorm[matlevel], Xshadow);
 
 	if (FP_LESS(t1.coord[2], 0.0f, FLT_EPSILON) || FP_LESS(t2.coord[2], 0.0f, FLT_EPSILON) || FP_LESS(t3.coord[2], 0.0f, FLT_EPSILON)) return;
 

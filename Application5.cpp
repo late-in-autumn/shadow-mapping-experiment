@@ -21,6 +21,7 @@ static char THIS_FILE[] = __FILE__;
 
 #define INFILE  "ppot.asc"
 #define OUTFILE "output.ppm"
+#define SHADOWFILE "shadow.ppm"
 
 
 extern int tex_fun(float u, float v, GzColor color); /* image texture function */
@@ -45,7 +46,7 @@ Application5::~Application5()
 
 int Application5::Initialize()
 {
-	GzCamera	camera;
+	GzCamera	camera, lightCamera; // lightCamera is set to the position of the light and is used for shadow mapping
 	int		    xRes, yRes;	/* display parameters */
 
 	GzToken		nameListShader[9]; 	    /* shader attribute names */
@@ -71,6 +72,9 @@ int Application5::Initialize()
 
 	m_pRender = new GzRender(m_nWidth, m_nHeight);
 	m_pRender->GzDefault();
+
+	m_pShadowMapRender = new GzRender(m_nWidth, m_nHeight); // the new renderer for shadow map
+	m_pShadowMapRender->GzDefault();
 
 	m_pFrameBuffer = m_pRender->framebuffer;
 
@@ -119,9 +123,23 @@ int Application5::Initialize()
 			camera.position[Z] = -4;
 	*/
 
-	camera.position[X] = -0.7071;
-	camera.position[Y] = 0.7071;
-	camera.position[Z] = -40;
+	lightCamera.position[X] = -0.7071;
+	lightCamera.position[Y] = 0.7071;
+	lightCamera.position[Z] = -40;
+
+	lightCamera.lookat[X] = 7.8;
+	lightCamera.lookat[Y] = 0.7;
+	lightCamera.lookat[Z] = 6.5;
+
+	lightCamera.worldup[X] = -0.2;
+	lightCamera.worldup[Y] = 1.0;
+	lightCamera.worldup[Z] = 0.0;
+
+	lightCamera.FOV = 63.7;              /* degrees */
+
+	camera.position[X] = -3;
+	camera.position[Y] = -25;
+	camera.position[Z] = -4;
 
 	camera.lookat[X] = 7.8;
 	camera.lookat[Y] = 0.7;
@@ -131,12 +149,14 @@ int Application5::Initialize()
 	camera.worldup[Y] = 1.0;
 	camera.worldup[Z] = 0.0;
 
-	camera.FOV = 63.7;              /* degrees */
+	camera.FOV = 63.7;              /* degrees *              /* degrees */
 
+	status |= m_pShadowMapRender->GzPutCamera(lightCamera);
 	status |= m_pRender->GzPutCamera(camera);
 #endif 
 
 	/* Start Renderer */
+	status |= m_pShadowMapRender->GzBeginRender();
 	status |= m_pRender->GzBeginRender();
 
 	/* Since we are rendering the depthmap with only light1 (for now),
@@ -189,8 +209,8 @@ int Application5::Initialize()
 	*/
 	nameListShader[1] = GZ_INTERPOLATE;
 	//interpStyle = GZ_COLOR;         /* Gouraud shading */
-	//interpStyle = GZ_NORMALS;         /* Phong shading */
-	interpStyle = GZ_SHADOWMAP;	/* For depthmap/shadow mapping */
+	interpStyle = GZ_NORMALS;         /* Phong shading */
+	//interpStyle = GZ_SHADOWMAP;	/* For depthmap/shadow mapping */
 
 	valueListShader[1] = (GzPointer)&interpStyle;
 
@@ -206,19 +226,25 @@ int Application5::Initialize()
 #if false   /* set up null texture function or valid pointer */
 	valueListShader[5] = (GzPointer)0;
 #else
-	valueListShader[5] = (GzPointer)(ptex_fun);	/* or use ptex_fun */
+	valueListShader[5] = (GzPointer)(tex_fun);	/* or use ptex_fun */
 #endif
 	status |= m_pRender->GzPutAttribute(6, nameListShader, valueListShader);
-
 
 	status |= m_pRender->GzPushMatrix(scale);
 	status |= m_pRender->GzPushMatrix(rotateY);
 	status |= m_pRender->GzPushMatrix(rotateX);
 
-	if (status) exit(GZ_FAILURE);
+	interpStyle = GZ_SHADOWMAP;
+	status |= m_pShadowMapRender->GzPutAttribute(6, nameListShader, valueListShader);
+
+	status |= m_pShadowMapRender->GzPushMatrix(scale);
+	status |= m_pShadowMapRender->GzPushMatrix(rotateY);
+	status |= m_pShadowMapRender->GzPushMatrix(rotateX);
+
+	status |= m_pRender->GzSetShadowRenderer(m_pShadowMapRender);
 
 	if (status)
-		return(GZ_FAILURE);
+		exit(GZ_FAILURE);
 	else
 		return(GZ_SUCCESS);
 }
@@ -259,6 +285,13 @@ int Application5::Render()
 		return GZ_FAILURE;
 	}
 
+	FILE* shadowfile;
+	if ((shadowfile = fopen(SHADOWFILE, "wb")) == NULL)
+	{
+		AfxMessageBox("The shadow file was not opened\n");
+		return GZ_FAILURE;
+	}
+
 	/*
 	* Walk through the list of triangles, set color
 	* and render each triangle
@@ -291,9 +324,11 @@ int Application5::Render()
 		valueListTriangle[0] = (GzPointer)vertexList;
 		valueListTriangle[1] = (GzPointer)normalList;
 		valueListTriangle[2] = (GzPointer)uvList;
+		m_pShadowMapRender->GzPutTriangle(3, nameListTriangle, valueListTriangle);
 		m_pRender->GzPutTriangle(3, nameListTriangle, valueListTriangle);
 	}
 
+	m_pShadowMapRender->GzFlushDisplay2File(shadowfile);
 	m_pRender->GzFlushDisplay2File(outfile); 	/* write out or update display to file*/
 	m_pRender->GzFlushDisplay2FrameBuffer();	// write out or update display to frame buffer
 
@@ -321,6 +356,7 @@ int Application5::Clean()
 	int	status = 0;
 
 	delete(m_pRender);
+	delete(m_pShadowMapRender);
 	status |= GzFreeTexture();
 
 	if (status)
