@@ -227,6 +227,7 @@ private:
 	void ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks);
 	void InterpolateNormal(GzNormalPlane* p, float x, float y, GzCoord n);
 	void InterpolateUv(GzUvPlane* p, float x, float y, GzTextureIndex uv);
+	void NearestNeighbor(GzTextureIndex in, GzTextureIndex out);
 	float InterpolateParameter(GzPlane* p, float x, float y);
 	float DotProduct(long size, float a[], float b[]);
 	float ComputeWrapFactor(float Vzs);

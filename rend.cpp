@@ -7,6 +7,7 @@
 #include	"rend.h"
 #include	<algorithm>
 #include	<fstream>
+#include	<limits>
 #include	<new>
 #include	<string>
 
@@ -113,12 +114,12 @@ GzRender::GzRender(int xRes, int yRes)
 	numlights = 0;
 
 	memset(Xsp, 0, sizeof(GzMatrix));
-	Xsp[0][0] = xres / 2.0;
-	Xsp[1][1] = -yres / 2.0;
-	Xsp[2][2] = INT_MAX;
+	Xsp[0][0] = xres / static_cast<float>(2);
+	Xsp[1][1] = -yres / static_cast<float>(2);
+	Xsp[2][2] = static_cast<float>((std::numeric_limits<int>::max)());
 	Xsp[3][3] = 1;
-	Xsp[0][3] = xres / 2.0;
-	Xsp[1][3] = yres / 2.0;
+	Xsp[0][3] = xres / static_cast<float>(2);
+	Xsp[1][3] = yres / static_cast<float>(2);
 
 	GzDefaultCamera();
 }
@@ -146,7 +147,7 @@ int GzRender::GzDefault()
 		(pixelbuffer + offset)->green = 4095;
 		(pixelbuffer + offset)->blue = 4095;
 		(pixelbuffer + offset)->alpha = 4095;
-		(pixelbuffer + offset)->z = INT_MAX;
+		(pixelbuffer + offset)->z = (std::numeric_limits<int>::max)();
 	}
 
 	// initialize the current Xshadow to identity matrix
@@ -487,7 +488,9 @@ void GzRender::RenderTriangle(GzVertex* v1, GzVertex* v2, GzVertex* v3)
 	TranslateVertex(&t2, Ximage[matlevel], Xnorm[matlevel], Xshadow);
 	TranslateVertex(&t3, Ximage[matlevel], Xnorm[matlevel], Xshadow);
 
-	if (FP_LESS(t1.coord[2], 0.0f, FLT_EPSILON) || FP_LESS(t2.coord[2], 0.0f, FLT_EPSILON) || FP_LESS(t3.coord[2], 0.0f, FLT_EPSILON)) return;
+	if (FP_LESS(t1.coord[2], 0.0f, std::numeric_limits<float>::epsilon())
+		|| FP_LESS(t2.coord[2], 0.0f, std::numeric_limits<float>::epsilon())
+		|| FP_LESS(t3.coord[2], 0.0f, std::numeric_limits<float>::epsilon())) return;
 
 	LinearEvaulator(&t1, &t2, &t3);
 }
@@ -527,7 +530,7 @@ void GzRender::LinearEvaulator(GzVertex* v1, GzVertex* v2, GzVertex* v3)
 		ComputeColor(&vc, const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzColor&>(FULL_INTENSITY));
 	}
 
-	if (FP_EQUALS(va.coord[1], vb.coord[1], FLT_EPSILON))
+	if (FP_EQUALS(va.coord[1], vb.coord[1], std::numeric_limits<float>::epsilon()))
 	{
 		// ab
 		e1.start = va;
@@ -541,7 +544,7 @@ void GzRender::LinearEvaulator(GzVertex* v1, GzVertex* v2, GzVertex* v3)
 		e3.start = vc;
 		e3.end = va;
 	}
-	else if (FP_EQUALS(vb.coord[1], vc.coord[1], FLT_EPSILON))
+	else if (FP_EQUALS(vb.coord[1], vc.coord[1], std::numeric_limits<float>::epsilon()))
 	{
 		// ac
 		e1.start = va;
@@ -563,7 +566,7 @@ void GzRender::LinearEvaulator(GzVertex* v1, GzVertex* v2, GzVertex* v3)
 		ComputeEdgeEquasion(&ac);
 
 		// step 6: set up the three edges (clockwise) according to the x coordinate of the point on ac with the y coordinate of b
-		if (FP_LESS(-(ac.c + ac.b * vb.coord[1]) / ac.a, vb.coord[1], FLT_EPSILON)) // ac is the left edge
+		if (FP_LESS(-(ac.c + ac.b * vb.coord[1]) / ac.a, vb.coord[1], std::numeric_limits<float>::epsilon())) // ac is the left edge
 		{
 			// ab
 			e1.start = va;
@@ -667,11 +670,11 @@ void GzRender::ComputeBoundBox(GzVertex* v1, GzVertex* v2, GzVertex* v3, long st
 	std::sort(x, x + 3);
 	std::sort(y, y + 3);
 
-	start[0] = floorl(x[0]) < 0 ? 0 : floorl(x[0]);
-	start[1] = floorl(y[0]) < 0 ? 0 : floorl(y[0]);
+	start[0] = static_cast<long>(floorl(x[0]) < 0 ? 0 : floorl(x[0]));
+	start[1] = static_cast<long>(floorl(y[0]) < 0 ? 0 : floorl(y[0]));
 
-	end[0] = ceill(x[2]) > xres ? xres : ceill(x[2]);
-	end[1] = ceill(y[2]) > yres ? yres : ceill(y[2]);
+	end[0] = static_cast<long>(ceill(x[2]) > xres ? xres : ceill(x[2]));
+	end[1] = static_cast<long>(ceill(y[2]) > yres ? yres : ceill(y[2]));
 }
 
 void GzRender::ComputeEdgeEquasion(GzEdge* e)
@@ -899,18 +902,18 @@ void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 			edgeEval[0] = e1->a * x + e1->b * y + e1->c;
 			edgeEval[1] = e2->a * x + e2->b * y + e2->c;
 			edgeEval[2] = e3->a * x + e3->b * y + e3->c;
-			zCurrent = (GzDepth)floorl(InterpolateParameter(p, x, y));
+			zCurrent = static_cast<GzDepth>(floorl(InterpolateParameter(p, static_cast<float>(x), static_cast<float>(y))));
 
 			if ((edgeEval[0] < 0 && edgeEval[1] < 0 && edgeEval[2] < 0)
 				|| (edgeEval[0] > 0 && edgeEval[1] > 0 && edgeEval[2] > 0)
-				|| (FP_EQUALS(edgeEval[0], 0.0f, FLT_EPSILON) && edgeEval[1] > 0 && edgeEval[2] > 0)
-				|| (FP_EQUALS(edgeEval[0], 0.0f, FLT_EPSILON) && edgeEval[1] < 0 && edgeEval[2] < 0))
+				|| (FP_EQUALS(edgeEval[0], 0.0f, std::numeric_limits<float>::epsilon()) && edgeEval[1] > 0 && edgeEval[2] > 0)
+				|| (FP_EQUALS(edgeEval[0], 0.0f, std::numeric_limits<float>::epsilon()) && edgeEval[1] < 0 && edgeEval[2] < 0))
 			{
 				GzGet(x, y, &rValue, &gValue, &bValue, &aValue, &zValue);
 				if (zCurrent < zValue)
 				{
-					vCurrent.coord[0] = x;
-					vCurrent.coord[1] = y;
+					vCurrent.coord[0] = static_cast<float>(x);
+					vCurrent.coord[1] = static_cast<float>(y);
 					vCurrent.coord[2] = InterpolateParameter(p, vCurrent.coord[0], vCurrent.coord[1]);
 					switch (interp_mode)
 					{
@@ -947,9 +950,9 @@ void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 						vCurrent.color[2] = (e1->start.color[2] + e2->start.color[2] + e3->start.color[2]) / 3;
 						break;
 					case GZ_SHADOWMAP:
-						vCurrent.color[0] = vCurrent.coord[2] / static_cast<float>(INT_MAX);
-						vCurrent.color[1] = vCurrent.coord[2] / static_cast<float>(INT_MAX);
-						vCurrent.color[2] = vCurrent.coord[2] / static_cast<float>(INT_MAX);
+						vCurrent.color[0] = vCurrent.coord[2] / static_cast<float>((std::numeric_limits<int>::max)());
+						vCurrent.color[1] = vCurrent.coord[2] / static_cast<float>((std::numeric_limits<int>::max)());
+						vCurrent.color[2] = vCurrent.coord[2] / static_cast<float>((std::numeric_limits<int>::max)());
 						break;
 					default:
 						memcpy(vCurrent.color, flatcolor, sizeof(GzColor));
@@ -1120,6 +1123,31 @@ void GzRender::InterpolateUv(GzUvPlane* p, float x, float y, GzTextureIndex uv)
 	uv[1] = -(p->dv + p->bv * y + p->av * x) / p->cv;
 }
 
+void GzRender::NearestNeighbor(GzTextureIndex in, GzTextureIndex out)
+{
+	GzTextureIndex neighbors[4] = {
+		{floorf(in[0]), floorf(in[1])},
+		{ceilf(in[0]), floorf(in[1])},
+		{floorf(in[0]), ceilf(in[1])},
+		{ceilf(in[0]), ceilf(in[1])}
+	};
+	float distances[4]{};
+	float minDistance = (std::numeric_limits<float>::max)();
+	int minDistanceIndex = 0;
+
+	for (int i = 0; i < 3; i++)
+		distances[i] = sqrtf(powf(in[0] - neighbors[i][0], 2) + powf(in[1] - neighbors[1][1], 2));
+
+	for (int i = 0; i < 3; i++)
+		if (FP_LESS(distances[i], minDistance, std::numeric_limits<float>::epsilon()))
+		{
+			minDistanceIndex = i;
+			minDistance = distances[i];
+		}
+
+	memcpy(out, neighbors[minDistanceIndex], sizeof(GzTextureIndex));
+}
+
 float GzRender::InterpolateParameter(GzPlane* p, float x, float y)
 {
 	return (-(p->d + p->b * y + p->a * x) / p->c);
@@ -1137,7 +1165,7 @@ float GzRender::DotProduct(long size, float a[], float b[])
 
 float GzRender::ComputeWrapFactor(float Vzs)
 {
-	return (1 + (Vzs / (INT_MAX - Vzs)));
+	return (1 + (Vzs / ((std::numeric_limits<int>::max)() - Vzs)));
 }
 
 int CompareVertices(const void* left, const void* right)
@@ -1146,12 +1174,12 @@ int CompareVertices(const void* left, const void* right)
 	Point* r = (Point*)right;
 	int result = 0;
 
-	if (FP_LESS(l->coord[1], r->coord[1], FLT_EPSILON)) result = -1;
-	else if (FP_MORE(l->coord[1], r->coord[1], FLT_EPSILON)) result = 1;
+	if (FP_LESS(l->coord[1], r->coord[1], std::numeric_limits<float>::epsilon())) result = -1;
+	else if (FP_MORE(l->coord[1], r->coord[1], std::numeric_limits<float>::epsilon())) result = 1;
 	else
 	{
-		if (FP_LESS(l->coord[0], r->coord[0], FLT_EPSILON)) result = -1;
-		else if (FP_MORE(l->coord[0], r->coord[0], FLT_EPSILON)) result = 1;
+		if (FP_LESS(l->coord[0], r->coord[0], std::numeric_limits<float>::epsilon())) result = -1;
+		else if (FP_MORE(l->coord[0], r->coord[0], std::numeric_limits<float>::epsilon())) result = 1;
 		else result = 0;
 	}
 

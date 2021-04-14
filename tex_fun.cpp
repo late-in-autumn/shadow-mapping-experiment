@@ -3,6 +3,7 @@
 #include	"stdio.h"
 #include	"Gz.h"
 #include	"rend.h"
+#include	<limits>
 
 GzColor* image = NULL;
 GzColor randomColors[NUM_QUADRANTS]{};
@@ -106,9 +107,12 @@ int ptex_fun(float u, float v, GzColor color)
 	u = CLAMP(u, 0.0f, 1.0f);
 	v = CLAMP(v, 0.0f, 1.0f);
 
-	if (FP_LESS(v, 0.5f, FLT_EPSILON) && FP_LESS(u, 0.5f, FLT_EPSILON)) memcpy(color, randomColors[0], sizeof(GzColor));
-	else if (FP_LESS(v, 0.5f, FLT_EPSILON) && !FP_LESS(u, 0.5f, FLT_EPSILON)) memcpy(color, randomColors[1], sizeof(GzColor));
-	else if (!FP_LESS(v, 0.5f, FLT_EPSILON) && FP_LESS(u, 0.5f, FLT_EPSILON)) memcpy(color, randomColors[2], sizeof(GzColor));
+	if (FP_LESS(v, 0.5f, std::numeric_limits<float>::epsilon())
+		&& FP_LESS(u, 0.5f, std::numeric_limits<float>::epsilon())) memcpy(color, randomColors[0], sizeof(GzColor));
+	else if (FP_LESS(v, 0.5f, std::numeric_limits<float>::epsilon())
+		&& !FP_LESS(u, 0.5f, std::numeric_limits<float>::epsilon())) memcpy(color, randomColors[1], sizeof(GzColor));
+	else if (!FP_LESS(v, 0.5f, std::numeric_limits<float>::epsilon())
+		&& FP_LESS(u, 0.5f, std::numeric_limits<float>::epsilon())) memcpy(color, randomColors[2], sizeof(GzColor));
 	else memcpy(color, randomColors[3], sizeof(GzColor));
 
 	return GZ_SUCCESS;
