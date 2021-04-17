@@ -87,6 +87,7 @@ public:
 	GzMatrix	Ximage[MATLEVELS];	/* stack of xforms (Xsm) */
 	GzMatrix	Xnorm[MATLEVELS];	/* xforms for norms (Xim) */
 	GzMatrix	Xsp;		        /* NDC to screen (pers-to-screen) */
+	GzMatrix	Xps;
 	GzMatrix	Xshadow;		// the shadow space transformation matrix required for shadow mapping
 	GzColor		flatcolor;          /* color state for flat shaded triangles */
 	int			interp_mode;
@@ -223,13 +224,20 @@ private:
 	void CrossProduct(GzCoord a, GzCoord b, GzCoord result);
 	void NormalizeVector(long size, float v[]);
 	void MultiplyMatrices(GzMatrix a, GzMatrix b, GzMatrix result);
+	void MultiplyMatricesTemp(GzMatrix a, float b[4], float result[4]);
 	void ExtractRotation(GzMatrix input, GzMatrix output);
+	void ExtractTranslation(GzMatrix input, GzMatrix output);
+	void ExtractScaling(GzMatrix input, GzMatrix output);
+	void InvertRotation(GzMatrix input, GzMatrix output);
+	void InvertTranslation(GzMatrix input, GzMatrix output);
+	void InvertScaling(GzMatrix input, GzMatrix output);
 	void ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks);
 	void InterpolateNormal(GzNormalPlane* p, float x, float y, GzCoord n);
 	void InterpolateUv(GzUvPlane* p, float x, float y, GzTextureIndex uv);
-	void NearestNeighbor(GzCoord in, int outX, int outY);
+	void NearestNeighbor(GzCoord in, int* outX, int* outY);
 	float InterpolateParameter(GzPlane* p, float x, float y);
 	float DotProduct(long size, float a[], float b[]);
 	float ComputeWrapFactor(float Vzs);
+	int InvertMatrix(GzMatrix in, GzMatrix out); // generic matrix inversion, adapted from the Mesa 3D's GLUT implementation
 };
 #endif

@@ -77,11 +77,7 @@ int GzRender::GzScaleMat(GzCoord scale, GzMatrix mat)
 
 int GzRender::GzGetXimage(GzMatrix out)
 {
-	if (matlevel == -1 || matlevel >= MATLEVELS)
-	{
-		OutputDebugStringA(("Get Ximage failed: matlevel (" + std::to_string(matlevel) + ") out of bound\n").c_str());
-		return GZ_FAILURE;
-	}
+	if (matlevel == -1 || matlevel >= MATLEVELS) return GZ_FAILURE;
 
 	memcpy(out, Ximage[matlevel], sizeof(GzMatrix));
 	return GZ_SUCCESS;
@@ -89,7 +85,7 @@ int GzRender::GzGetXimage(GzMatrix out)
 
 int GzRender::GzSetShadowRenderer(GzRender* renderer)
 {
-	if (renderer == nullptr) return GZ_FAILURE;
+	if (renderer == NULL) return GZ_FAILURE;
 
 	shadow_map_renderer = renderer;
 	shadow_map_renderer->GzGetXimage(Xshadow);
@@ -98,6 +94,9 @@ int GzRender::GzSetShadowRenderer(GzRender* renderer)
 
 GzRender::GzRender(int xRes, int yRes)
 {
+	// set the shadow map renderer to null
+	shadow_map_renderer = NULL;
+
 	// update x and y resolutions
 	xres = xRes;
 	yres = yRes;
@@ -121,6 +120,14 @@ GzRender::GzRender(int xRes, int yRes)
 	Xsp[0][3] = xres / static_cast<float>(2);
 	Xsp[1][3] = yres / static_cast<float>(2);
 
+	memset(Xps, 0, sizeof(GzMatrix));
+	Xps[0][0] = 1 / (xres / static_cast<float>(2));
+	Xps[1][1] = 1 / (-yres / static_cast<float>(2));
+	Xps[2][2] = 1 / static_cast<float>((std::numeric_limits<int>::max)());
+	Xps[3][3] = 1;
+	Xps[0][3] = -(xres / static_cast<float>(2));
+	Xps[1][3] = -(yres / static_cast<float>(2));
+
 	GzDefaultCamera();
 }
 
@@ -133,9 +140,6 @@ GzRender::~GzRender()
 
 int GzRender::GzDefault()
 {
-	// set the shadow renderer to null
-	shadow_map_renderer = nullptr;
-
 	// initialize current triangle and current offset
 	memset(currentTriangle, 0, sizeof(GzTriangle));
 	memset(currentOffset, 0, sizeof(GzOffsetsXY));
@@ -155,6 +159,30 @@ int GzRender::GzDefault()
 
 	// update the framebuffer accordingly
 	GzFlushDisplay2FrameBuffer();
+
+	//// Invert Matrix Test
+	//GzMatrix inputMatrix, outputMatrix;
+	//inputMatrix[0][0] = 1;
+	//inputMatrix[0][1] = 1;
+	//inputMatrix[0][2] = 1;
+	//inputMatrix[0][3] = -1;
+
+	//inputMatrix[1][0] = 1;
+	//inputMatrix[1][1] = 1;
+	//inputMatrix[1][2] = -1;
+	//inputMatrix[1][3] = 1;
+
+	//inputMatrix[2][0] = 1;
+	//inputMatrix[2][1] = -1;
+	//inputMatrix[2][2] = 1;
+	//inputMatrix[2][3] = 1;
+
+	//inputMatrix[3][0] = -1;
+	//inputMatrix[3][1] = 1;
+	//inputMatrix[3][2] = 1;
+	//inputMatrix[3][3] = 1;
+
+	//InvertMatrix(inputMatrix, outputMatrix);
 
 	return GZ_SUCCESS;
 }
@@ -473,6 +501,21 @@ void GzRender::UpdateCameraMatrices()
 	m_camera.Xiw[1][3] = -yDotOrigin;
 	m_camera.Xiw[2][3] = -zDotOrigin;
 	m_camera.Xiw[3][3] = 1;
+
+	memset(m_camera.Xwi, 0, sizeof(GzMatrix));
+	m_camera.Xwi[0][0] = xAxis[0];
+	m_camera.Xwi[1][0] = xAxis[1];
+	m_camera.Xwi[2][0] = xAxis[2];
+	m_camera.Xwi[0][1] = yAxis[0];
+	m_camera.Xwi[1][1] = yAxis[1];
+	m_camera.Xwi[2][1] = yAxis[2];
+	m_camera.Xwi[0][2] = zAxis[0];
+	m_camera.Xwi[1][2] = zAxis[1];
+	m_camera.Xwi[2][2] = zAxis[2];
+	m_camera.Xwi[0][3] = xDotOrigin;
+	m_camera.Xwi[1][3] = yDotOrigin;
+	m_camera.Xwi[2][3] = zDotOrigin;
+	m_camera.Xwi[3][3] = 1;
 }
 
 void GzRender::RenderTriangle(GzVertex* v1, GzVertex* v2, GzVertex* v3)
@@ -517,7 +560,7 @@ void GzRender::LinearEvaulator(GzVertex* v1, GzVertex* v2, GzVertex* v3)
 	SortVertices(&va, &vb, &vc);
 
 	// step 4: compute the colors of the three vertices
-	if (tex_fun == nullptr)
+	if (tex_fun == NULL)
 	{
 		ComputeColor(&va, Ka, Kd, Ks);
 		ComputeColor(&vb, Ka, Kd, Ks);
@@ -855,6 +898,9 @@ void GzRender::ComputeShadowPlaneEquasion(GzNormalPlane* p)
 	GzCoord v2{};
 	GzCoord product{};
 
+	/**if (shadow_map_renderer != NULL)
+		OutputDebugStringA((std::to_string(p->p2.shadow[0]) + " " + std::to_string(p->p2.shadow[1]) + " " + std::to_string(p->p2.shadow[2]) + "\n").c_str());**/
+
 	v1[0] = p->p2.coord[0] - p->p1.coord[0];
 	v1[1] = p->p2.coord[1] - p->p1.coord[1];
 	v1[2] = p->p2.shadow[0] - p->p1.shadow[0];
@@ -899,6 +945,9 @@ void GzRender::ComputeShadowPlaneEquasion(GzNormalPlane* p)
 	p->bz = product[1];
 	p->cz = product[2];
 	p->dz = -(p->cz * p->p2.shadow[2]) - (p->bz * p->p2.coord[1]) - (p->az * p->p2.coord[0]);
+
+	/**if (shadow_map_renderer != NULL)
+		OutputDebugStringA((std::to_string(p->az) + " " + std::to_string(p->bz) + " " + std::to_string(p->cz) + " " + std::to_string(p->dz) + "\n").c_str());**/
 }
 
 void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
@@ -910,6 +959,25 @@ void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 	GzDepth zValue, zCurrent;
 	GzVertex vCurrent{};
 	GzColor cCurrent{};
+
+	// Shadow vars
+	int lightSpaceX = 0;
+	int lightSpaceY = 0;
+	GzIntensity rShadow, gShadow, bShadow, aShadow;
+	GzDepth zShadow;
+	GzColor	modifiedKd, modifiedKs;
+	GzMatrix Xls, Xinvert;
+
+	if (shadow_map_renderer != NULL)
+	{
+		// Generate Xinvert matrix (screen space to world space)
+		int result = InvertMatrix(Ximage[matlevel], Xinvert);
+		if (result == GZ_FAILURE) OutputDebugStringA("Invert didn't work!\n");
+		//else OutputDebugStringA("Invert works!\n");
+
+		// use invert matrix to go from world space to light space coordinates
+		MultiplyMatrices(shadow_map_renderer->Ximage[matlevel], Xinvert, Xls);
+	}
 
 	for (int x = start[0]; x < end[0]; x++)
 		for (int y = start[1]; y < end[1]; y++)
@@ -930,25 +998,101 @@ void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 					vCurrent.coord[0] = static_cast<float>(x);
 					vCurrent.coord[1] = static_cast<float>(y);
 					vCurrent.coord[2] = InterpolateParameter(p, vCurrent.coord[0], vCurrent.coord[1]);
+
+					// Create screen space x,y,z coordinates to homogenous coordinates (used for Xls matrix multiplication) (needs to be a 4x1 matrix)
+					float screenSpaceCoord[4], lightSpaceCoordHomogenous[4];
+					screenSpaceCoord[0] = vCurrent.coord[0];
+					screenSpaceCoord[1] = vCurrent.coord[1];
+					screenSpaceCoord[2] = vCurrent.coord[2];
+					screenSpaceCoord[3] = 1;
+
+					// Transfrom screen space coordinates to light space coordinates
+					MultiplyMatricesTemp(Xls, screenSpaceCoord, lightSpaceCoordHomogenous);
+
+					// Convet from homogenous coordinates to cartesian coordinates
+					GzCoord lightSpaceCoord;
+					lightSpaceCoord[0] = lightSpaceCoordHomogenous[0] / lightSpaceCoordHomogenous[3];
+					lightSpaceCoord[1] = lightSpaceCoordHomogenous[1] / lightSpaceCoordHomogenous[3];
+					lightSpaceCoord[2] = lightSpaceCoordHomogenous[2] / lightSpaceCoordHomogenous[3];
+
+					/*memcpy(modifiedKd, Kd, sizeof(GzColor));
+					memcpy(modifiedKs, Ks, sizeof(GzColor));*/
+
+					modifiedKd[0] = Kd[0];
+					modifiedKd[1] = Kd[1];
+					modifiedKd[2] = Kd[2];
+
+					modifiedKs[0] = Ks[0];
+					modifiedKs[1] = Ks[1];
+					modifiedKs[2] = Ks[2];
+
+
+					if (shadow_map_renderer != NULL)
+					{
+						NearestNeighbor(lightSpaceCoord, &lightSpaceX, &lightSpaceY);
+						shadow_map_renderer->GzGet(lightSpaceX, lightSpaceY, &rShadow, &gShadow, &bShadow, &aShadow, &zShadow);
+
+						// DEBUG STATEMENTS
+						//OutputDebugStringA((std::to_string(lightSpaceX) + " " + std::to_string(lightSpaceY) + "\n").c_str());
+						//OutputDebugStringA((std::to_string(zShadow) + " " + std::to_string(vCurrent.shadow[2]) + "\n").c_str());
+
+						//OutputDebugStringA((std::to_string(zShadow) + "\n").c_str());
+						/*OutputDebugStringA((std::to_string(lightSpaceCoord[0]) + ",").c_str());
+						OutputDebugStringA((std::to_string(lightSpaceCoord[1]) + ",").c_str());
+						OutputDebugStringA((std::to_string(lightSpaceCoord[2]) + "\n").c_str());*/
+
+
+						// Enabling this and setting modifiedKd[*] and modifiedKs[*] to 0.0 will show shadow acne. 
+						// If modifiedKd[*] and modifiedKs[*] are set to 0.7 instead, this will yield the same results as "if (abs(lightSpaceCoord[2] - zShadow) > 0.005)" statement
+						//if (zShadow < static_cast<GzDepth>(lightSpaceCoord[2])) {
+
+						//	OutputDebugStringA("In shadow!\n");
+
+						//	modifiedKd[0] = 0.7;
+						//	modifiedKd[1] = 0.7;
+						//	modifiedKd[2] = 0.7;
+
+						//	modifiedKs[0] = 0.7;
+						//	modifiedKs[1] = 0.7;
+						//	modifiedKs[2] = 0.7;
+						//}
+
+						// If modifiedKd[*] and modifiedKs[*] are set to 0.0, it get returns 10% of ambient color (close to black) because ambient coefficient is set to 0.1 in Application5.cpp. No shadows will show
+						// 0.005 is such a low value that this if statement will always evaluate to true. 
+						if (abs(lightSpaceCoord[2] - zShadow) > 0.005){
+							 
+							modifiedKd[0] = 0.7;
+							modifiedKd[1] = 0.7;
+							modifiedKd[2] = 0.7;
+
+							modifiedKs[0] = 0.7;
+							modifiedKs[1] = 0.7;
+							modifiedKs[2] = 0.7;
+						}
+						else {
+							OutputDebugStringA("Not in shadow!\n");
+						}
+					}
+
 					switch (interp_mode)
 					{
 					case GZ_NORMALS:
 						InterpolateNormal(n, vCurrent.coord[0], vCurrent.coord[1], vCurrent.normal);
-						if (tex_fun == nullptr) ComputeColor(&vCurrent, Ka, Kd, Ks);
+						if (tex_fun == NULL) ComputeColor(&vCurrent, Ka, modifiedKd, modifiedKs);
 						else
 						{
 							InterpolateUv(uv, vCurrent.coord[0], vCurrent.coord[1], vCurrent.uv);
 							vCurrent.uv[0] *= ComputeWrapFactor(vCurrent.coord[2]);
 							vCurrent.uv[1] *= ComputeWrapFactor(vCurrent.coord[2]);
 							tex_fun(vCurrent.uv[0], vCurrent.uv[1], cCurrent);
-							ComputeColor(&vCurrent, cCurrent, cCurrent, Ks);
+							ComputeColor(&vCurrent, cCurrent, modifiedKd, modifiedKs);
 						}
 						break;
 					case GZ_COLOR:
 						vCurrent.color[0] = InterpolateParameter(r, vCurrent.coord[0], vCurrent.coord[1]);
 						vCurrent.color[1] = InterpolateParameter(g, vCurrent.coord[0], vCurrent.coord[1]);
 						vCurrent.color[2] = InterpolateParameter(b, vCurrent.coord[0], vCurrent.coord[1]);
-						if (tex_fun != nullptr)
+						if (tex_fun != NULL)
 						{
 							InterpolateUv(uv, vCurrent.coord[0], vCurrent.coord[1], vCurrent.uv);
 							vCurrent.uv[0] *= ComputeWrapFactor(vCurrent.coord[2]);
@@ -1058,16 +1202,63 @@ void GzRender::MultiplyMatrices(GzMatrix a, GzMatrix b, GzMatrix result)
 				result[i][j] += a[i][k] * b[k][j];
 }
 
+void GzRender::MultiplyMatricesTemp(GzMatrix a, float b[4], float result[4])
+{
+	memset(result, 0, sizeof(float[4]));
+	result[0] = a[0][0] * b[0] + a[0][1] * b[1] + a[0][2] * b[2] + a[0][3] * b[3];
+	result[1] = a[1][0] * b[0] + a[1][1] * b[1] + a[1][2] * b[2] + a[1][3] * b[3];
+	result[2] = a[2][0] * b[0] + a[2][1] * b[1] + a[2][2] * b[2] + a[2][3] * b[3];
+	result[3] = a[3][0] * b[0] + a[3][1] * b[1] + a[3][2] * b[2] + a[3][3] * b[3];
+
+}
+
 void GzRender::ExtractRotation(GzMatrix input, GzMatrix output)
 {
-	GzCoord column{};
+	GzCoord row{};
 	memset(output, 0, sizeof(GzMatrix));
 	for (int i = 0; i < 3; i++)
 	{
-		memcpy(column, input[i], sizeof(GzCoord));
-		NormalizeVector(3, column);
-		memcpy(output[i], column, sizeof(GzCoord));
+		memcpy(row, input[i], sizeof(GzCoord));
+		NormalizeVector(3, row);
+		memcpy(output[i], row, sizeof(GzCoord));
 	}
+	output[3][3] = 1;
+}
+
+void GzRender::ExtractTranslation(GzMatrix input, GzMatrix output)
+{
+	memcpy(output, IDENTITY, sizeof(GzMatrix));
+	for (int i = 0; i < 3; i++)
+		output[i][3] = input[i][3];
+}
+
+void GzRender::ExtractScaling(GzMatrix input, GzMatrix output)
+{
+	memset(output, 0, sizeof(GzMatrix));
+	for (int i = 0; i < 3; i++)
+		output[i][i] = input[i][i];
+	output[3][3] = 1;
+}
+
+void GzRender::InvertRotation(GzMatrix input, GzMatrix output)
+{
+	for (int i = 0; i < 4; i++)
+		for (int j = 0; j < 4; j++)
+			output[j][i] = input[i][j];
+}
+
+void GzRender::InvertTranslation(GzMatrix input, GzMatrix output)
+{
+	memcpy(output, IDENTITY, sizeof(GzMatrix));
+	for (int i = 0; i < 3; i++)
+		output[i][3] = -input[i][3];
+}
+
+void GzRender::InvertScaling(GzMatrix input, GzMatrix output)
+{
+	memset(output, 0, sizeof(GzMatrix));
+	for (int i = 0; i < 3; i++)
+		output[i][i] = 1 / input[i][i];
 	output[3][3] = 1;
 }
 
@@ -1139,7 +1330,7 @@ void GzRender::InterpolateUv(GzUvPlane* p, float x, float y, GzTextureIndex uv)
 	uv[1] = -(p->dv + p->bv * y + p->av * x) / p->cv;
 }
 
-void GzRender::NearestNeighbor(GzCoord in, int outX, int outY)
+void GzRender::NearestNeighbor(GzCoord in, int* outX, int* outY)
 {
 	GzTextureIndex neighbors[4] = {
 		{floorf(in[0]), floorf(in[1])},
@@ -1161,8 +1352,8 @@ void GzRender::NearestNeighbor(GzCoord in, int outX, int outY)
 			minDistance = distances[i];
 		}
 
-	outX = static_cast<int>(neighbors[minDistanceIndex][0]);
-	outY = static_cast<int>(neighbors[minDistanceIndex][1]);
+	*outX = static_cast<int>(neighbors[minDistanceIndex][0]);
+	*outY = static_cast<int>(neighbors[minDistanceIndex][1]);
 }
 
 float GzRender::InterpolateParameter(GzPlane* p, float x, float y)
@@ -1183,6 +1374,138 @@ float GzRender::DotProduct(long size, float a[], float b[])
 float GzRender::ComputeWrapFactor(float Vzs)
 {
 	return (1 + (Vzs / ((std::numeric_limits<int>::max)() - Vzs)));
+}
+
+// generic matrix inversion, adapted from the Mesa 3D's GLUT implementation
+int GzRender::InvertMatrix(GzMatrix in, GzMatrix out)
+{
+	GzMatrix invert;
+	float det;
+	int i;
+
+	invert[0][0] = in[0][5] * in[0][10] * in[0][15] -
+		in[0][5] * in[0][11] * in[0][14] -
+		in[0][9] * in[0][6] * in[0][15] +
+		in[0][9] * in[0][7] * in[0][14] +
+		in[0][13] * in[0][6] * in[0][11] -
+		in[0][13] * in[0][7] * in[0][10];
+
+	invert[0][4] = -in[0][4] * in[0][10] * in[0][15] +
+		in[0][4] * in[0][11] * in[0][14] +
+		in[0][8] * in[0][6] * in[0][15] -
+		in[0][8] * in[0][7] * in[0][14] -
+		in[0][12] * in[0][6] * in[0][11] +
+		in[0][12] * in[0][7] * in[0][10];
+
+	invert[0][8] = in[0][4] * in[0][9] * in[0][15] -
+		in[0][4] * in[0][11] * in[0][13] -
+		in[0][8] * in[0][5] * in[0][15] +
+		in[0][8] * in[0][7] * in[0][13] +
+		in[0][12] * in[0][5] * in[0][11] -
+		in[0][12] * in[0][7] * in[0][9];
+
+	invert[0][12] = -in[0][4] * in[0][9] * in[0][14] +
+		in[0][4] * in[0][10] * in[0][13] +
+		in[0][8] * in[0][5] * in[0][14] -
+		in[0][8] * in[0][6] * in[0][13] -
+		in[0][12] * in[0][5] * in[0][10] +
+		in[0][12] * in[0][6] * in[0][9];
+
+	invert[0][1] = -in[0][1] * in[0][10] * in[0][15] +
+		in[0][1] * in[0][11] * in[0][14] +
+		in[0][9] * in[0][2] * in[0][15] -
+		in[0][9] * in[0][3] * in[0][14] -
+		in[0][13] * in[0][2] * in[0][11] +
+		in[0][13] * in[0][3] * in[0][10];
+
+	invert[0][5] = in[0][0] * in[0][10] * in[0][15] -
+		in[0][0] * in[0][11] * in[0][14] -
+		in[0][8] * in[0][2] * in[0][15] +
+		in[0][8] * in[0][3] * in[0][14] +
+		in[0][12] * in[0][2] * in[0][11] -
+		in[0][12] * in[0][3] * in[0][10];
+
+	invert[0][9] = -in[0][0] * in[0][9] * in[0][15] +
+		in[0][0] * in[0][11] * in[0][13] +
+		in[0][8] * in[0][1] * in[0][15] -
+		in[0][8] * in[0][3] * in[0][13] -
+		in[0][12] * in[0][1] * in[0][11] +
+		in[0][12] * in[0][3] * in[0][9];
+
+	invert[0][13] = in[0][0] * in[0][9] * in[0][14] -
+		in[0][0] * in[0][10] * in[0][13] -
+		in[0][8] * in[0][1] * in[0][14] +
+		in[0][8] * in[0][2] * in[0][13] +
+		in[0][12] * in[0][1] * in[0][10] -
+		in[0][12] * in[0][2] * in[0][9];
+
+	invert[0][2] = in[0][1] * in[0][6] * in[0][15] -
+		in[0][1] * in[0][7] * in[0][14] -
+		in[0][5] * in[0][2] * in[0][15] +
+		in[0][5] * in[0][3] * in[0][14] +
+		in[0][13] * in[0][2] * in[0][7] -
+		in[0][13] * in[0][3] * in[0][6];
+
+	invert[0][6] = -in[0][0] * in[0][6] * in[0][15] +
+		in[0][0] * in[0][7] * in[0][14] +
+		in[0][4] * in[0][2] * in[0][15] -
+		in[0][4] * in[0][3] * in[0][14] -
+		in[0][12] * in[0][2] * in[0][7] +
+		in[0][12] * in[0][3] * in[0][6];
+
+	invert[0][10] = in[0][0] * in[0][5] * in[0][15] -
+		in[0][0] * in[0][7] * in[0][13] -
+		in[0][4] * in[0][1] * in[0][15] +
+		in[0][4] * in[0][3] * in[0][13] +
+		in[0][12] * in[0][1] * in[0][7] -
+		in[0][12] * in[0][3] * in[0][5];
+
+	invert[0][14] = -in[0][0] * in[0][5] * in[0][14] +
+		in[0][0] * in[0][6] * in[0][13] +
+		in[0][4] * in[0][1] * in[0][14] -
+		in[0][4] * in[0][2] * in[0][13] -
+		in[0][12] * in[0][1] * in[0][6] +
+		in[0][12] * in[0][2] * in[0][5];
+
+	invert[0][3] = -in[0][1] * in[0][6] * in[0][11] +
+		in[0][1] * in[0][7] * in[0][10] +
+		in[0][5] * in[0][2] * in[0][11] -
+		in[0][5] * in[0][3] * in[0][10] -
+		in[0][9] * in[0][2] * in[0][7] +
+		in[0][9] * in[0][3] * in[0][6];
+
+	invert[0][7] = in[0][0] * in[0][6] * in[0][11] -
+		in[0][0] * in[0][7] * in[0][10] -
+		in[0][4] * in[0][2] * in[0][11] +
+		in[0][4] * in[0][3] * in[0][10] +
+		in[0][8] * in[0][2] * in[0][7] -
+		in[0][8] * in[0][3] * in[0][6];
+
+	invert[0][11] = -in[0][0] * in[0][5] * in[0][11] +
+		in[0][0] * in[0][7] * in[0][9] +
+		in[0][4] * in[0][1] * in[0][11] -
+		in[0][4] * in[0][3] * in[0][9] -
+		in[0][8] * in[0][1] * in[0][7] +
+		in[0][8] * in[0][3] * in[0][5];
+
+	invert[0][15] = in[0][0] * in[0][5] * in[0][10] -
+		in[0][0] * in[0][6] * in[0][9] -
+		in[0][4] * in[0][1] * in[0][10] +
+		in[0][4] * in[0][2] * in[0][9] +
+		in[0][8] * in[0][1] * in[0][6] -
+		in[0][8] * in[0][2] * in[0][5];
+
+	det = in[0][0] * invert[0][0] + in[0][1] * invert[0][4] + in[0][2] * invert[0][8] + in[0][3] * invert[0][12];
+
+	if (det == 0)
+		return GZ_FAILURE;
+
+	det = 1 / det;
+
+	for (i = 0; i < 16; i++)
+		out[0][i] = invert[0][i] * det;
+
+	return GZ_SUCCESS;
 }
 
 int CompareVertices(const void* left, const void* right)

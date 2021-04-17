@@ -64,8 +64,10 @@ typedef	int	(*GzTexture)(float u, float v, GzColor color);	/* pointer to texture
 #define GZCAMERA
 typedef struct  GzCamera
 {
+	GzMatrix			Xwi;
 	GzMatrix			Xiw;  		/* xform from world to image space */
 	GzMatrix			Xpi;  		/* perspective projection xform */
+	GzMatrix			Xip;
 	GzCoord			position;  	/* position of image plane origin */
 	GzCoord			lookat;         /* position of look-at-point */
 	GzCoord			worldup;  /* world up-vector (almost screen up) */

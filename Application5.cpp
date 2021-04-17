@@ -103,8 +103,6 @@ int Application5::Initialize()
 		0.0,	0.0,	0.0,	1.0
 	};
 
-#if 1 	/* set up app-defined camera if desired, else use camera defaults */
-
 	/* The depthmap is currently only rendered with 1 light source -- light1.
 	   From HW, light1 is positioned at [x, y, z] = [-0.7071, 0.7071, 0];
 	   In order to capture all the components in the scene, the z-position
@@ -123,11 +121,12 @@ int Application5::Initialize()
 			camera.position[Z] = -4;
 	*/
 
+	// Light position was modified to match the light1 position
 	lightCamera.position[X] = -0.7071;
-	lightCamera.position[Y] = 0.7071;
-	lightCamera.position[Z] = -40;
+	lightCamera.position[Y] = 20.0;
+	lightCamera.position[Z] = -15;
 
-	lightCamera.lookat[X] = 7.8;
+	lightCamera.lookat[X] = 4.5;
 	lightCamera.lookat[Y] = 0.7;
 	lightCamera.lookat[Z] = 6.5;
 
@@ -135,11 +134,18 @@ int Application5::Initialize()
 	lightCamera.worldup[Y] = 1.0;
 	lightCamera.worldup[Z] = 0.0;
 
-	lightCamera.FOV = 63.7;              /* degrees */
+	lightCamera.FOV = 60;              /* degrees */
+	status |= m_pShadowMapRender->GzPutCamera(lightCamera);
 
-	camera.position[X] = -3;
-	camera.position[Y] = -25;
-	camera.position[Z] = -4;
+#if true 	/* set up app-defined camera if desired, else use camera defaults */
+	// Modified camera positions to get a better view of the teapot
+	camera.position[X] = 5.2;
+	camera.position[Y] = 25.7;
+	camera.position[Z] = 10.8;
+
+	//camera.position[X] = 10.2;
+	//camera.position[Y] = 1.7;
+	//camera.position[Z] = 10.8;
 
 	camera.lookat[X] = 7.8;
 	camera.lookat[Y] = 0.7;
@@ -150,8 +156,6 @@ int Application5::Initialize()
 	camera.worldup[Z] = 0.0;
 
 	camera.FOV = 63.7;              /* degrees *              /* degrees */
-
-	status |= m_pShadowMapRender->GzPutCamera(lightCamera);
 	status |= m_pRender->GzPutCamera(camera);
 #endif 
 
@@ -167,7 +171,9 @@ int Application5::Initialize()
 	*/
 
 	/* Light */
-	GzLight	light1 = { {-0.7071, 0.7071, -40}, {0.5, 0.5, 0.9} };		// z-position is updated to match that of camera-position.
+	//GzLight	light1 = { {-0.7071, 0.7071, -40}, {0.5, 0.5, 0.9} };		// z-position is updated to match that of camera-position.
+	// Light position was changed to get a closer view of the depth map/darker shadows. Color of light was changed to a more white color to show shadows more clearly
+	GzLight	light1 = { {-0.7071, 20.0, -15}, {0.9, 0.9, 0.9} };
 	GzLight	ambientlight = { {0, 0, 0}, {0.3, 0.3, 0.3} };
 
 	/* Material property */
@@ -223,7 +229,7 @@ int Application5::Initialize()
 	valueListShader[4] = (GzPointer)&specpower;
 
 	nameListShader[5] = GZ_TEXTURE_MAP;
-#if false   /* set up null texture function or valid pointer */
+#if true   /* set up null texture function or valid pointer */
 	valueListShader[5] = (GzPointer)0;
 #else
 	valueListShader[5] = (GzPointer)(tex_fun);	/* or use ptex_fun */
