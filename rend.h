@@ -69,7 +69,7 @@ typedef struct {
 	GzCoord normal;
 	GzColor color;
 	GzTextureIndex uv;
-	GzTextureIndex shadow;
+	GzCoord shadow;
 } Point;
 
 int CompareVertices(const void* left, const void* right);
@@ -144,7 +144,7 @@ private:
 		GzCoord normal;
 		GzColor color;
 		GzTextureIndex uv;
-		GzTextureIndex shadow;
+		GzCoord shadow;
 	} GzVertex;
 
 	typedef struct {
@@ -215,10 +215,10 @@ private:
 	void ComputeNormalPlaneEquasion(GzNormalPlane* p);
 	void ComputeColorPlaneEquasions(GzPlane* pr, GzPlane* pg, GzPlane* pb);
 	void ComputeUvPlaneEquasion(GzUvPlane* p);
-	void ComputeShadowPlaneEquasion(GzUvPlane* p);
+	void ComputeShadowPlaneEquasion(GzNormalPlane* p);
 	void FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 		GzPlane* p, GzPlane* r, GzPlane* g, GzPlane* b,
-		GzNormalPlane* n, GzUvPlane* uv, GzUvPlane* shadow, long start[2], long end[2]);
+		GzNormalPlane* n, GzUvPlane* uv, GzNormalPlane* shadow, long start[2], long end[2]);
 	void TranslateVertex(GzVertex* v, GzMatrix ximage, GzMatrix xnorm, GzMatrix xshadow);
 	void CrossProduct(GzCoord a, GzCoord b, GzCoord result);
 	void NormalizeVector(long size, float v[]);
@@ -227,7 +227,7 @@ private:
 	void ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks);
 	void InterpolateNormal(GzNormalPlane* p, float x, float y, GzCoord n);
 	void InterpolateUv(GzUvPlane* p, float x, float y, GzTextureIndex uv);
-	void NearestNeighbor(GzTextureIndex in, GzTextureIndex out);
+	void NearestNeighbor(GzCoord in, int outX, int outY);
 	float InterpolateParameter(GzPlane* p, float x, float y);
 	float DotProduct(long size, float a[], float b[]);
 	float ComputeWrapFactor(float Vzs);

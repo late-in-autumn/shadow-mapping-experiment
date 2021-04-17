@@ -501,8 +501,8 @@ void GzRender::LinearEvaulator(GzVertex* v1, GzVertex* v2, GzVertex* v3)
 	GzVertex va{}, vb{}, vc{};
 	GzEdge ac{}, e1{}, e2{}, e3{};
 	GzPlane plane{}, pr{}, pg{}, pb{};
-	GzNormalPlane pn{};
-	GzUvPlane puv{}, pshadow{};
+	GzNormalPlane pn{}, pshadow{};
+	GzUvPlane puv{};
 	long start[2]{}, end[2]{};
 
 	// step 1: populate the vertices
@@ -849,7 +849,7 @@ void GzRender::ComputeUvPlaneEquasion(GzUvPlane* p)
 	p->dv = -(p->cv * p->p2.uv[1]) - (p->bv * p->p2.coord[1]) - (p->av * p->p2.coord[0]);
 }
 
-void GzRender::ComputeShadowPlaneEquasion(GzUvPlane* p)
+void GzRender::ComputeShadowPlaneEquasion(GzNormalPlane* p)
 {
 	GzCoord v1{};
 	GzCoord v2{};
@@ -865,10 +865,10 @@ void GzRender::ComputeShadowPlaneEquasion(GzUvPlane* p)
 
 	CrossProduct(v1, v2, product);
 
-	p->au = product[0];
-	p->bu = product[1];
-	p->cu = product[2];
-	p->du = -(p->cu * p->p2.shadow[0]) - (p->bu * p->p2.coord[1]) - (p->au * p->p2.coord[0]);
+	p->ax = product[0];
+	p->ax = product[1];
+	p->cx = product[2];
+	p->dx = -(p->cx * p->p2.shadow[0]) - (p->bx * p->p2.coord[1]) - (p->ax * p->p2.coord[0]);
 
 	v1[0] = p->p2.coord[0] - p->p1.coord[0];
 	v1[1] = p->p2.coord[1] - p->p1.coord[1];
@@ -880,15 +880,30 @@ void GzRender::ComputeShadowPlaneEquasion(GzUvPlane* p)
 
 	CrossProduct(v1, v2, product);
 
-	p->av = product[0];
-	p->bv = product[1];
-	p->cv = product[2];
-	p->dv = -(p->cv * p->p2.shadow[1]) - (p->bv * p->p2.coord[1]) - (p->av * p->p2.coord[0]);
+	p->ay = product[0];
+	p->by = product[1];
+	p->cy = product[2];
+	p->dy = -(p->cy * p->p2.shadow[1]) - (p->by * p->p2.coord[1]) - (p->ay * p->p2.coord[0]);
+
+	v1[0] = p->p2.coord[0] - p->p1.coord[0];
+	v1[1] = p->p2.coord[1] - p->p1.coord[1];
+	v1[2] = p->p2.shadow[2] - p->p1.shadow[2];
+
+	v2[0] = p->p3.coord[0] - p->p2.coord[0];
+	v2[1] = p->p3.coord[1] - p->p2.coord[1];
+	v2[2] = p->p3.shadow[2] - p->p2.shadow[2];
+
+	CrossProduct(v1, v2, product);
+
+	p->az = product[0];
+	p->bz = product[1];
+	p->cz = product[2];
+	p->dz = -(p->cz * p->p2.shadow[2]) - (p->bz * p->p2.coord[1]) - (p->az * p->p2.coord[0]);
 }
 
 void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 	GzPlane* p, GzPlane* r, GzPlane* g, GzPlane* b,
-	GzNormalPlane* n, GzUvPlane* uv, GzUvPlane* shadow, long start[2], long end[2])
+	GzNormalPlane* n, GzUvPlane* uv, GzNormalPlane* shadow, long start[2], long end[2])
 {
 	float edgeEval[3]{};
 	GzIntensity rValue, gValue, bValue, aValue;
@@ -1011,6 +1026,7 @@ void GzRender::TranslateVertex(GzVertex* v, GzMatrix ximage, GzMatrix xnorm, GzM
 
 	v->shadow[0] = output[0] / output[3];
 	v->shadow[1] = output[1] / output[3];
+	v->shadow[2] = output[2] / output[3];
 }
 
 void GzRender::CrossProduct(GzCoord a, GzCoord b, GzCoord result)
@@ -1123,7 +1139,7 @@ void GzRender::InterpolateUv(GzUvPlane* p, float x, float y, GzTextureIndex uv)
 	uv[1] = -(p->dv + p->bv * y + p->av * x) / p->cv;
 }
 
-void GzRender::NearestNeighbor(GzTextureIndex in, GzTextureIndex out)
+void GzRender::NearestNeighbor(GzCoord in, int outX, int outY)
 {
 	GzTextureIndex neighbors[4] = {
 		{floorf(in[0]), floorf(in[1])},
@@ -1145,7 +1161,8 @@ void GzRender::NearestNeighbor(GzTextureIndex in, GzTextureIndex out)
 			minDistance = distances[i];
 		}
 
-	memcpy(out, neighbors[minDistanceIndex], sizeof(GzTextureIndex));
+	outX = static_cast<int>(neighbors[minDistanceIndex][0]);
+	outY = static_cast<int>(neighbors[minDistanceIndex][1]);
 }
 
 float GzRender::InterpolateParameter(GzPlane* p, float x, float y)
