@@ -19,9 +19,16 @@ static char THIS_FILE[] = __FILE__;
 #define new DEBUG_NEW
 #endif
 
-#define INFILE  "ppot.asc"
-#define OUTFILE "output.ppm"
-#define SHADOWFILE "shadow.ppm"
+// switch between input files
+#if false
+constexpr auto INFILE  "ppot.asc"
+#elif false
+constexpr auto INFILE "ppot-back.asc"
+#else
+constexpr auto INFILE = "pot4.asc";
+#endif
+constexpr auto OUTFILE = "output.ppm";
+constexpr auto SHADOWFILE = "shadow.ppm";
 
 
 extern int tex_fun(float u, float v, GzColor color); /* image texture function */
@@ -47,13 +54,12 @@ Application5::~Application5()
 int Application5::Initialize()
 {
 	GzCamera	camera, lightCamera; // lightCamera is set to the position of the light and is used for shadow mapping
-	int		    xRes, yRes;	/* display parameters */
 
 	GzToken		nameListShader[9]; 	    /* shader attribute names */
 	GzPointer   valueListShader[9];		/* shader attribute pointers */
 	GzToken     nameListLights[10];		/* light info */
 	GzPointer   valueListLights[10];
-	int			shaderType, interpStyle;
+	int			interpStyle;
 	float		specpower;
 	int		status;
 
@@ -137,16 +143,16 @@ int Application5::Initialize()
 	lightCamera.FOV = 60;              /* degrees */
 	status |= m_pShadowMapRender->GzPutCamera(lightCamera);
 
-#if true 	/* set up app-defined camera if desired, else use camera defaults */
-	// Modified camera positions to get a better view of the teapot
+#if false 	/* set up app-defined camera if desired, else use camera defaults */
+#if false   // use modified camera positions to get a better view of the teapot
 	camera.position[X] = 5.2;
 	camera.position[Y] = 25.7;
 	camera.position[Z] = 10.8;
-
-	//camera.position[X] = 10.2;
-	//camera.position[Y] = 1.7;
-	//camera.position[Z] = 10.8;
-
+#else
+	camera.position[X] = 10.2;
+	camera.position[Y] = 1.7;
+	camera.position[Z] = 10.8;
+#endif
 	camera.lookat[X] = 7.8;
 	camera.lookat[Y] = 0.7;
 	camera.lookat[Z] = 6.5;
@@ -155,7 +161,7 @@ int Application5::Initialize()
 	camera.worldup[Y] = 1.0;
 	camera.worldup[Z] = 0.0;
 
-	camera.FOV = 63.7;              /* degrees *              /* degrees */
+	camera.FOV = 63.7;              /* degrees */
 	status |= m_pRender->GzPutCamera(camera);
 #endif 
 
@@ -173,8 +179,8 @@ int Application5::Initialize()
 	/* Light */
 	//GzLight	light1 = { {-0.7071, 0.7071, -40}, {0.5, 0.5, 0.9} };		// z-position is updated to match that of camera-position.
 	// Light position was changed to get a closer view of the depth map/darker shadows. Color of light was changed to a more white color to show shadows more clearly
-	GzLight	light1 = { {-0.7071, 20.0, -15}, {0.9, 0.9, 0.9} };
-	GzLight	ambientlight = { {0, 0, 0}, {0.3, 0.3, 0.3} };
+	GzLight	light1 = { {-0.7071, 20.0, -15}, {0.3, 0.6, 0.9} };
+	GzLight	ambientlight = { {0, 0, 0}, {0.2, 0.4, 0.8} };
 
 	/* Material property */
 	GzColor specularCoefficient = { 0.3, 0.3, 0.3 };
@@ -214,9 +220,11 @@ int Application5::Initialize()
 	* Select either GZ_COLOR or GZ_NORMALS as interpolation mode
 	*/
 	nameListShader[1] = GZ_INTERPOLATE;
-	//interpStyle = GZ_COLOR;         /* Gouraud shading */
+#if true
 	interpStyle = GZ_NORMALS;         /* Phong shading */
-	//interpStyle = GZ_SHADOWMAP;	/* For depthmap/shadow mapping */
+#elif
+	interpStyle = GZ_COLOR;         /* Gouraud shading */
+#endif
 
 	valueListShader[1] = (GzPointer)&interpStyle;
 
@@ -230,7 +238,7 @@ int Application5::Initialize()
 
 	nameListShader[5] = GZ_TEXTURE_MAP;
 #if true   /* set up null texture function or valid pointer */
-	valueListShader[5] = (GzPointer)0;
+	valueListShader[5] = (GzPointer)nullptr;
 #else
 	valueListShader[5] = (GzPointer)(tex_fun);	/* or use ptex_fun */
 #endif
@@ -247,7 +255,9 @@ int Application5::Initialize()
 	status |= m_pShadowMapRender->GzPushMatrix(rotateY);
 	status |= m_pShadowMapRender->GzPushMatrix(rotateX);
 
+#if true // enable shadow mapping for the main renderer
 	status |= m_pRender->GzSetShadowRenderer(m_pShadowMapRender);
+#endif
 
 	if (status)
 		exit(GZ_FAILURE);
@@ -278,21 +288,21 @@ int Application5::Render()
 
 	// I/O File open
 	FILE* infile;
-	if ((infile = fopen(INFILE, "r")) == NULL)
+	if ((infile = fopen(INFILE, "r")) == nullptr)
 	{
 		AfxMessageBox("The input file was not opened\n");
 		return GZ_FAILURE;
 	}
 
 	FILE* outfile;
-	if ((outfile = fopen(OUTFILE, "wb")) == NULL)
+	if ((outfile = fopen(OUTFILE, "wb")) == nullptr)
 	{
 		AfxMessageBox("The output file was not opened\n");
 		return GZ_FAILURE;
 	}
 
 	FILE* shadowfile;
-	if ((shadowfile = fopen(SHADOWFILE, "wb")) == NULL)
+	if ((shadowfile = fopen(SHADOWFILE, "wb")) == nullptr)
 	{
 		AfxMessageBox("The shadow file was not opened\n");
 		return GZ_FAILURE;

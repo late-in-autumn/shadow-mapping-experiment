@@ -4,24 +4,31 @@
 
 
 /* Camera defaults */
-#define	DEFAULT_FOV		35.0
-#define	DEFAULT_IM_Z	(-10.0)  /* world coords for image plane origin */
-#define	DEFAULT_IM_Y	(5.0)    /* default look-at point = 0,0,0 */
-#define	DEFAULT_IM_X	(-10.0)
+constexpr auto DEFAULT_FOV = 35.0;
+constexpr auto DEFAULT_IM_Z = (-10.0);  /* world coords for image plane origin */
+constexpr auto DEFAULT_IM_Y = (5.0);  /* default look-at point = 0,0,0 */
+constexpr auto DEFAULT_IM_X = (-10.0);
 
-#define	DEFAULT_AMBIENT	{0.1, 0.1, 0.1}
-#define	DEFAULT_DIFFUSE	{0.7, 0.6, 0.5}
-#define	DEFAULT_SPECULAR	{0.2, 0.3, 0.4}
-#define	DEFAULT_SPEC		32
+constexpr auto DEFAULT_AMBIENT = { 0.1, 0.1, 0.1 };
+constexpr auto DEFAULT_DIFFUSE = { 0.7, 0.6, 0.5 };
+constexpr auto DEFAULT_SPECULAR = { 0.2, 0.3, 0.4 };
+constexpr auto DEFAULT_SPEC = 32;
 
-#define	MATLEVELS	100		/* how many matrix pushes allowed */
-#define	MAX_LIGHTS	10		/* how many lights allowed */
+constexpr auto MATLEVELS = 100;	/* how many matrix pushes allowed */
+constexpr auto MAX_LIGHTS = 10;	/* how many lights allowed */
 
-// constants: pi, identity matrix, eye coordinate, full light intensity (for modified Gouruand shading), and number of quadrants
+// constants
+// some of them, like PI and IDENTITY, should never be changed
+// others, can be changed, read the symbol name for exact meaning
 template<typename T> constexpr T PI = T(3.14159265358979323846);
+template<typename T> constexpr T SHADOW_BIAS = T(0.5);
+template<typename T> constexpr T SHADOW_DIFFUSE_FACTOR = T(0.5);
+template<typename T> constexpr T SHADOW_SPECULAR_FACTOR = T(0.7);
 constexpr GzMatrix IDENTITY = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 constexpr GzCoord EYE = { 0, 0, -1 };
 constexpr GzColor FULL_INTENSITY = { 1.0f, 1.0f, 1.0f };
+constexpr GzColor SHADOW_KD = { SHADOW_DIFFUSE_FACTOR<float>, SHADOW_DIFFUSE_FACTOR<float>, SHADOW_DIFFUSE_FACTOR<float> };
+constexpr GzColor SHADOW_KS = { SHADOW_SPECULAR_FACTOR<float>, SHADOW_SPECULAR_FACTOR<float>, SHADOW_SPECULAR_FACTOR<float> };
 constexpr int NUM_QUADRANTS = 4;
 
 // a more generic version of the array offset finder, assumes a square matrix
@@ -87,8 +94,6 @@ public:
 	GzMatrix	Ximage[MATLEVELS];	/* stack of xforms (Xsm) */
 	GzMatrix	Xnorm[MATLEVELS];	/* xforms for norms (Xim) */
 	GzMatrix	Xsp;		        /* NDC to screen (pers-to-screen) */
-	GzMatrix	Xps;
-	GzMatrix	Xshadow;		// the shadow space transformation matrix required for shadow mapping
 	GzColor		flatcolor;          /* color state for flat shaded triangles */
 	int			interp_mode;
 	int			numlights;
@@ -136,7 +141,6 @@ public:
 	int GzScaleMat(GzCoord scale, GzMatrix mat);
 
 	// methods needed for shadow mapping
-	int GzGetXimage(GzMatrix out);
 	int GzSetShadowRenderer(GzRender* renderer);
 
 private:
@@ -216,21 +220,15 @@ private:
 	void ComputeNormalPlaneEquasion(GzNormalPlane* p);
 	void ComputeColorPlaneEquasions(GzPlane* pr, GzPlane* pg, GzPlane* pb);
 	void ComputeUvPlaneEquasion(GzUvPlane* p);
-	void ComputeShadowPlaneEquasion(GzNormalPlane* p);
 	void FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 		GzPlane* p, GzPlane* r, GzPlane* g, GzPlane* b,
-		GzNormalPlane* n, GzUvPlane* uv, GzNormalPlane* shadow, long start[2], long end[2]);
-	void TranslateVertex(GzVertex* v, GzMatrix ximage, GzMatrix xnorm, GzMatrix xshadow);
+		GzNormalPlane* n, GzUvPlane* uv, long start[2], long end[2]);
+	void TranslateVertex(GzVertex* v, GzMatrix ximage, GzMatrix xnorm);
+	void ExtractRotation(GzMatrix input, GzMatrix output);
 	void CrossProduct(GzCoord a, GzCoord b, GzCoord result);
 	void NormalizeVector(long size, float v[]);
 	void MultiplyMatrices(GzMatrix a, GzMatrix b, GzMatrix result);
-	void MultiplyMatricesTemp(GzMatrix a, float b[4], float result[4]);
-	void ExtractRotation(GzMatrix input, GzMatrix output);
-	void ExtractTranslation(GzMatrix input, GzMatrix output);
-	void ExtractScaling(GzMatrix input, GzMatrix output);
-	void InvertRotation(GzMatrix input, GzMatrix output);
-	void InvertTranslation(GzMatrix input, GzMatrix output);
-	void InvertScaling(GzMatrix input, GzMatrix output);
+	void TranslateCoord(GzMatrix a, float b[4], float result[4]);
 	void ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks);
 	void InterpolateNormal(GzNormalPlane* p, float x, float y, GzCoord n);
 	void InterpolateUv(GzUvPlane* p, float x, float y, GzTextureIndex uv);

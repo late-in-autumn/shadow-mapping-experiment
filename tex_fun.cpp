@@ -5,7 +5,7 @@
 #include	"rend.h"
 #include	<limits>
 
-GzColor* image = NULL;
+GzColor* image = nullptr;
 GzColor randomColors[NUM_QUADRANTS]{};
 int xs, ys;
 int reset = 1;
@@ -41,27 +41,30 @@ int tex_fun(float u, float v, GzColor color)
 	unsigned char		pixel[3];
 	unsigned char     dummy;
 	char  		foo[8];
-	int   		i, j;
+	int   		i;
 	FILE* fd;
 
-	if (reset) {          /* open and load texture file */
+	if (reset)
+	{          /* open and load texture file */
 		fd = fopen("texture", "rb");
-		if (fd == NULL) {
+		if (fd == nullptr)
+		{
 			OutputDebugStringA("texture file not found\n");
 			exit(-1);
 		}
 		fscanf(fd, "%s %d %d %c", foo, &xs, &ys, &dummy);
 		image = (GzColor*)malloc(sizeof(GzColor) * (xs + 1) * (ys + 1));
-		if (image == NULL) {
+		if (image == nullptr)
+		{
 			OutputDebugStringA("malloc for texture image failed\n");
 			exit(-1);
 		}
 
 		for (i = 0; i < xs * ys; i++) {	/* create array of GzColor values */
 			fread(pixel, sizeof(pixel), 1, fd);
-			image[i][RED] = (float)((int)pixel[RED]) * (1.0 / 255.0);
-			image[i][GREEN] = (float)((int)pixel[GREEN]) * (1.0 / 255.0);
-			image[i][BLUE] = (float)((int)pixel[BLUE]) * (1.0 / 255.0);
+			image[i][RED] = (float)((int)pixel[RED]) * (static_cast<float>(1) / static_cast<float>(255));
+			image[i][GREEN] = (float)((int)pixel[GREEN]) * (static_cast<float>(1) / static_cast<float>(255));
+			image[i][BLUE] = (float)((int)pixel[BLUE]) * (static_cast<float>(1) / static_cast<float>(255));
 		}
 
 		reset = 0;          /* init is done */
@@ -121,7 +124,7 @@ int ptex_fun(float u, float v, GzColor color)
 /* Free texture memory */
 int GzFreeTexture()
 {
-	if (image != NULL)
+	if (image != nullptr)
 		free(image);
 	return GZ_SUCCESS;
 }

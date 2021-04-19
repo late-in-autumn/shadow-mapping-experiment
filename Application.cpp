@@ -1,4 +1,4 @@
-// Application.cpp: implementation of the Application class.
+﻿// Application.cpp: implementation of the Application class.
 //
 //////////////////////////////////////////////////////////////////////
 
@@ -8,7 +8,7 @@
 
 #ifdef _DEBUG
 #undef THIS_FILE
-static char THIS_FILE[]=__FILE__;
+static char THIS_FILE[] = __FILE__;
 #define new DEBUG_NEW
 #endif
 
@@ -18,16 +18,13 @@ static char THIS_FILE[]=__FILE__;
 
 Application::Application()
 {
-	m_pRender = NULL;		// the renderer
-	m_pUserInput = NULL;
-	m_pFrameBuffer = NULL;
+	m_pRender = nullptr;		// the renderer
+	m_pUserInput = nullptr;
+	m_pFrameBuffer = nullptr;
 }
 
 Application::~Application()
 {
-	//if(m_pFrameBuffer != NULL)
-	//	delete m_pFrameBuffer;
-	if(m_pUserInput != NULL)
+	if (m_pUserInput != nullptr)
 		delete m_pUserInput;
 }
-
