@@ -28,7 +28,8 @@ constexpr auto INFILE "ppot-back.asc"
 constexpr auto INFILE = "pot4.asc";
 #endif
 constexpr auto OUTFILE = "output.ppm";
-constexpr auto SHADOWFILE = "shadow.ppm";
+constexpr auto SHADOWFILEONE = "shadow1.ppm";
+constexpr auto SHADOWFILETWO = "shadow2.ppm";
 
 
 extern int tex_fun(float u, float v, GzColor color); /* image texture function */
@@ -53,7 +54,7 @@ Application5::~Application5()
 
 int Application5::Initialize()
 {
-	GzCamera	camera, lightCamera; // lightCamera is set to the position of the light and is used for shadow mapping
+	GzCamera	camera, lightCamera[2]; // lightCamera is set to the position of the light and is used for shadow mapping
 
 	GzToken		nameListShader[9]; 	    /* shader attribute names */
 	GzPointer   valueListShader[9];		/* shader attribute pointers */
@@ -79,8 +80,11 @@ int Application5::Initialize()
 	m_pRender = new GzRender(m_nWidth, m_nHeight);
 	m_pRender->GzDefault();
 
-	m_pShadowMapRender = new GzRender(m_nWidth, m_nHeight); // the new renderer for shadow map
-	m_pShadowMapRender->GzDefault();
+	m_pShadowMapRender[0] = new GzRender(m_nWidth, m_nHeight); // the new renderer for shadow map
+	m_pShadowMapRender[0]->GzDefault();
+
+	m_pShadowMapRender[1] = new GzRender(m_nWidth, m_nHeight); // the new renderer for shadow map
+	m_pShadowMapRender[1]->GzDefault();
 
 	m_pFrameBuffer = m_pRender->framebuffer;
 
@@ -128,23 +132,32 @@ int Application5::Initialize()
 	*/
 
 	// Light position was modified to match the light1 position
-	lightCamera.position[X] = -0.7071;
-	lightCamera.position[Y] = 20.0;
-	lightCamera.position[Z] = -15;
+	lightCamera[0].position[X] = -0.7071;
+	lightCamera[0].position[Y] = 20.0;
+	lightCamera[0].position[Z] = -15;
+	lightCamera[0].lookat[X] = 4.5;
+	lightCamera[0].lookat[Y] = 0.7;
+	lightCamera[0].lookat[Z] = 6.5;
+	lightCamera[0].worldup[X] = -0.2;
+	lightCamera[0].worldup[Y] = 1.0;
+	lightCamera[0].worldup[Z] = 0.0;
+	lightCamera[0].FOV = 60;              /* degrees */
+	status |= m_pShadowMapRender[0]->GzPutCamera(lightCamera[0]);
 
-	lightCamera.lookat[X] = 4.5;
-	lightCamera.lookat[Y] = 0.7;
-	lightCamera.lookat[Z] = 6.5;
-
-	lightCamera.worldup[X] = -0.2;
-	lightCamera.worldup[Y] = 1.0;
-	lightCamera.worldup[Z] = 0.0;
-
-	lightCamera.FOV = 60;              /* degrees */
-	status |= m_pShadowMapRender->GzPutCamera(lightCamera);
+	lightCamera[1].position[X] = 5.0;
+	lightCamera[1].position[Y] = 28.0;
+	lightCamera[1].position[Z] = -2.0;
+	lightCamera[1].lookat[X] = -4.5;
+	lightCamera[1].lookat[Y] = -5.7;
+	lightCamera[1].lookat[Z] = 6.5;
+	lightCamera[1].worldup[X] = -0.2;
+	lightCamera[1].worldup[Y] = 1.0;
+	lightCamera[1].worldup[Z] = 0.0;
+	lightCamera[1].FOV = 60;
+	status |= m_pShadowMapRender[1]->GzPutCamera(lightCamera[1]);
 
 #if false 	/* set up app-defined camera if desired, else use camera defaults */
-#if false   // use modified camera positions to get a better view of the teapot
+#if true   // use modified camera positions to get a better view of the teapot
 	camera.position[X] = 5.2;
 	camera.position[Y] = 25.7;
 	camera.position[Z] = 10.8;
@@ -166,20 +179,14 @@ int Application5::Initialize()
 #endif 
 
 	/* Start Renderer */
-	status |= m_pShadowMapRender->GzBeginRender();
+	status |= m_pShadowMapRender[0]->GzBeginRender();
+	status |= m_pShadowMapRender[1]->GzBeginRender();
 	status |= m_pRender->GzBeginRender();
 
-	/* Since we are rendering the depthmap with only light1 (for now),
-	   below are light2 and light3 parameters from HW for reference if
-	   needed later on.
-	   GzLight light2 = { {0, -0.7071, -0.7071}, {0.9, 0.2, 0.3} };
-	   GzLight light3 = { {0.7071, 0.0, -0.7071}, {0.2, 0.7, 0.3} };
-	*/
-
-	/* Light */
-	//GzLight	light1 = { {-0.7071, 0.7071, -40}, {0.5, 0.5, 0.9} };		// z-position is updated to match that of camera-position.
-	// Light position was changed to get a closer view of the depth map/darker shadows. Color of light was changed to a more white color to show shadows more clearly
-	GzLight	light1 = { {-0.7071, 20.0, -15}, {0.3, 0.6, 0.9} };
+	/* Lights */
+	GzLight	light1 = { {-0.7071, 20.0, -15}, {0.3, 0.6, 0.9}, (GzPointer)m_pShadowMapRender[0] };
+	GzLight light2 = { {5.0, 28.0, -2.0}, {0.9, 0.2, 0.3},  (GzPointer)m_pShadowMapRender[1] };
+	// GzLight light3 = { {0.7071, 0.0, -0.7071}, {0.2, 0.7, 0.3} }; <- the third light that we can add if we want
 	GzLight	ambientlight = { {0, 0, 0}, {0.2, 0.4, 0.8} };
 
 	/* Material property */
@@ -196,15 +203,9 @@ int Application5::Initialize()
 	 */
 	nameListLights[0] = GZ_DIRECTIONAL_LIGHT;
 	valueListLights[0] = (GzPointer)&light1;
-	status |= m_pRender->GzPutAttribute(1, nameListLights, valueListLights);
-
-	/* In case, we decide to work with multiple light sources later on.
 	nameListLights[1] = GZ_DIRECTIONAL_LIGHT;
 	valueListLights[1] = (GzPointer)&light2;
-	nameListLights[2] = GZ_DIRECTIONAL_LIGHT;
-	valueListLights[2] = (GzPointer)&light3;
-	status |= m_pRender->GzPutAttribute(3, nameListLights, valueListLights);
-	*/
+	status |= m_pRender->GzPutAttribute(2, nameListLights, valueListLights);
 
 	nameListLights[0] = GZ_AMBIENT_LIGHT;
 	valueListLights[0] = (GzPointer)&ambientlight;
@@ -249,14 +250,22 @@ int Application5::Initialize()
 	status |= m_pRender->GzPushMatrix(rotateX);
 
 	interpStyle = GZ_SHADOWMAP;
-	status |= m_pShadowMapRender->GzPutAttribute(6, nameListShader, valueListShader);
+	status |= m_pShadowMapRender[0]->GzPutAttribute(6, nameListShader, valueListShader);
 
-	status |= m_pShadowMapRender->GzPushMatrix(scale);
-	status |= m_pShadowMapRender->GzPushMatrix(rotateY);
-	status |= m_pShadowMapRender->GzPushMatrix(rotateX);
+	status |= m_pShadowMapRender[0]->GzPushMatrix(scale);
+	status |= m_pShadowMapRender[0]->GzPushMatrix(rotateY);
+	status |= m_pShadowMapRender[0]->GzPushMatrix(rotateX);
+
+	status |= m_pShadowMapRender[1]->GzPutAttribute(6, nameListShader, valueListShader);
+
+	status |= m_pShadowMapRender[1]->GzPushMatrix(scale);
+	status |= m_pShadowMapRender[1]->GzPushMatrix(rotateY);
+	status |= m_pShadowMapRender[1]->GzPushMatrix(rotateX);
 
 #if true // enable shadow mapping for the main renderer
-	status |= m_pRender->GzSetShadowRenderer(m_pShadowMapRender);
+	status |= m_pRender->GzSetShadowMap(true);
+#else
+	status |= m_pRender->GzSetShadowMap(false);
 #endif
 
 	if (status)
@@ -301,10 +310,16 @@ int Application5::Render()
 		return GZ_FAILURE;
 	}
 
-	FILE* shadowfile;
-	if ((shadowfile = fopen(SHADOWFILE, "wb")) == nullptr)
+	FILE* shadowfile[2];
+	if ((shadowfile[0] = fopen(SHADOWFILEONE, "wb")) == nullptr)
 	{
-		AfxMessageBox("The shadow file was not opened\n");
+		AfxMessageBox("The first shadow file was not opened\n");
+		return GZ_FAILURE;
+	}
+
+	if ((shadowfile[1] = fopen(SHADOWFILETWO, "wb")) == nullptr)
+	{
+		AfxMessageBox("The second shadow file was not opened\n");
 		return GZ_FAILURE;
 	}
 
@@ -340,11 +355,13 @@ int Application5::Render()
 		valueListTriangle[0] = (GzPointer)vertexList;
 		valueListTriangle[1] = (GzPointer)normalList;
 		valueListTriangle[2] = (GzPointer)uvList;
-		m_pShadowMapRender->GzPutTriangle(3, nameListTriangle, valueListTriangle);
+		m_pShadowMapRender[0]->GzPutTriangle(3, nameListTriangle, valueListTriangle);
+		m_pShadowMapRender[1]->GzPutTriangle(3, nameListTriangle, valueListTriangle);
 		m_pRender->GzPutTriangle(3, nameListTriangle, valueListTriangle);
 	}
 
-	m_pShadowMapRender->GzFlushDisplay2File(shadowfile);
+	m_pShadowMapRender[0]->GzFlushDisplay2File(shadowfile[0]);
+	m_pShadowMapRender[1]->GzFlushDisplay2File(shadowfile[1]);
 	m_pRender->GzFlushDisplay2File(outfile); 	/* write out or update display to file*/
 	m_pRender->GzFlushDisplay2FrameBuffer();	// write out or update display to frame buffer
 
@@ -372,7 +389,8 @@ int Application5::Clean()
 	int	status = 0;
 
 	delete(m_pRender);
-	delete(m_pShadowMapRender);
+	delete(m_pShadowMapRender[0]);
+	delete(m_pShadowMapRender[1]);
 	status |= GzFreeTexture();
 
 	if (status)

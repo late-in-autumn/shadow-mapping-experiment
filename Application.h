@@ -1,4 +1,4 @@
-// Application.h: interface for the Application class.
+﻿// Application.h: interface for the Application class.
 //
 //////////////////////////////////////////////////////////////////////
 
@@ -20,7 +20,7 @@ public:
 
 public:
 	GzRender* m_pRender;		// the renderer
-	GzRender* m_pShadowMapRender;
+	GzRender* m_pShadowMapRender[2];
 	GzInput* m_pUserInput;
 	char* m_pFrameBuffer;	// Frame Buffer
 	int   m_nWidth;			// width of Frame Buffer

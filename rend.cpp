@@ -75,18 +75,16 @@ int GzRender::GzScaleMat(GzCoord scale, GzMatrix mat)
 	return GZ_SUCCESS;
 }
 
-int GzRender::GzSetShadowRenderer(GzRender* renderer)
+int GzRender::GzSetShadowMap(bool in)
 {
-	if (renderer == nullptr) return GZ_FAILURE;
-
-	shadow_map_renderer = renderer;
+	use_shadow_map = in;
 	return GZ_SUCCESS;
 }
 
 GzRender::GzRender(int xRes, int yRes)
 {
-	// set the shadow map renderer to null
-	shadow_map_renderer = nullptr;
+	// default to not using shadowmap
+	use_shadow_map = false;
 
 	// update x and y resolutions
 	xres = xRes;
@@ -518,15 +516,18 @@ void GzRender::LinearEvaulator(GzVertex* v1, GzVertex* v2, GzVertex* v3)
 	// step 4: compute the colors of the three vertices
 	if (tex_fun == nullptr)
 	{
-		ComputeColor(&va, Ka, Kd, Ks);
-		ComputeColor(&vb, Ka, Kd, Ks);
-		ComputeColor(&vc, Ka, Kd, Ks);
+		ComputeColor(&va, Ka, Kd, Ks, const_cast<GzMatrix&>(IDENTITY));
+		ComputeColor(&vb, Ka, Kd, Ks, const_cast<GzMatrix&>(IDENTITY));
+		ComputeColor(&vc, Ka, Kd, Ks, const_cast<GzMatrix&>(IDENTITY));
 	}
 	else
 	{
-		ComputeColor(&va, const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzColor&>(FULL_INTENSITY));
-		ComputeColor(&vb, const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzColor&>(FULL_INTENSITY));
-		ComputeColor(&vc, const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzColor&>(FULL_INTENSITY));
+		ComputeColor(&va, const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzColor&>(FULL_INTENSITY),
+			const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzMatrix&>(IDENTITY));
+		ComputeColor(&vb, const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzColor&>(FULL_INTENSITY),
+			const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzMatrix&>(IDENTITY));
+		ComputeColor(&vc, const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzColor&>(FULL_INTENSITY),
+			const_cast<GzColor&>(FULL_INTENSITY), const_cast<GzMatrix&>(IDENTITY));
 	}
 
 	if (FP_EQUALS(va.coord[1], vb.coord[1], std::numeric_limits<float>::epsilon()))
@@ -852,23 +853,15 @@ void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 	GzDepth zValue, zCurrent;
 	GzVertex vCurrent{};
 	GzColor cCurrent{};
+	GzMatrix Xinvert;
 
-	// Shadow vars
-	bool inShadow = false;
-	int lightSpaceX = 0;
-	int lightSpaceY = 0;
-	GzIntensity rShadow, gShadow, bShadow, aShadow;
-	GzDepth zShadow;
-	GzMatrix Xls, Xinvert;
-
-	if (shadow_map_renderer != nullptr)
+	if (use_shadow_map)
 	{
 		// Generate Xinvert matrix (screen space to world space)
 		int result = InvertMatrix(Ximage[matlevel], Xinvert);
+#ifdef GZ_DEBUG_MODE
 		if (result == GZ_FAILURE) OutputDebugStringA("Invert didn't work!\n");
-
-		// use invert matrix to go from world space to light space coordinates
-		MultiplyMatrices(shadow_map_renderer->Ximage[matlevel], Xinvert, Xls);
+#endif
 	}
 
 	for (int x = start[0]; x < end[0]; x++)
@@ -891,47 +884,18 @@ void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 					vCurrent.coord[1] = static_cast<float>(y);
 					vCurrent.coord[2] = InterpolateParameter(p, vCurrent.coord[0], vCurrent.coord[1]);
 
-					// Create screen space x,y,z coordinates to homogenous coordinates (used for Xls matrix multiplication) (needs to be a 4x1 matrix)
-					float screenSpaceCoord[4], lightSpaceCoordHomogenous[4];
-					memcpy(screenSpaceCoord, vCurrent.coord, sizeof(GzCoord));
-					screenSpaceCoord[3] = static_cast<float>(1);
-
-					// Transfrom screen space coordinates to light space coordinates
-					TranslateCoord(Xls, screenSpaceCoord, lightSpaceCoordHomogenous);
-
-					// Convet from homogenous coordinates to cartesian coordinates
-					vCurrent.shadow[0] = lightSpaceCoordHomogenous[0] / lightSpaceCoordHomogenous[3];
-					vCurrent.shadow[1] = lightSpaceCoordHomogenous[1] / lightSpaceCoordHomogenous[3];
-					vCurrent.shadow[2] = lightSpaceCoordHomogenous[2] / lightSpaceCoordHomogenous[3];
-
-					if (shadow_map_renderer != nullptr)
-					{
-						NearestNeighbor(vCurrent.shadow, &lightSpaceX, &lightSpaceY);
-						shadow_map_renderer->GzGet(lightSpaceX, lightSpaceY, &rShadow, &gShadow, &bShadow, &aShadow, &zShadow);
-
-						if (abs(vCurrent.shadow[2] - zShadow) > SHADOW_BIAS<float>) inShadow = true;
-						else
-						{
-							inShadow = false;
-							OutputDebugStringA("Not in shadow!\n");
-						}
-					}
-
 					switch (interp_mode)
 					{
 					case GZ_NORMALS:
 						InterpolateNormal(n, vCurrent.coord[0], vCurrent.coord[1], vCurrent.normal);
-						if (tex_fun == nullptr)
-							if (inShadow) ComputeColor(&vCurrent, Ka, const_cast<GzColor&>(SHADOW_KD), const_cast<GzColor&>(SHADOW_KS));
-							else ComputeColor(&vCurrent, Ka, Kd, Ks);
+						if (tex_fun == nullptr) ComputeColor(&vCurrent, Ka, Kd, Ks, Xinvert);
 						else
 						{
 							InterpolateUv(uv, vCurrent.coord[0], vCurrent.coord[1], vCurrent.uv);
 							vCurrent.uv[0] *= ComputeWrapFactor(vCurrent.coord[2]);
 							vCurrent.uv[1] *= ComputeWrapFactor(vCurrent.coord[2]);
 							tex_fun(vCurrent.uv[0], vCurrent.uv[1], cCurrent);
-							if (inShadow) ComputeColor(&vCurrent, cCurrent, const_cast<GzColor&>(SHADOW_KD), const_cast<GzColor&>(SHADOW_KS));
-							else ComputeColor(&vCurrent, cCurrent, cCurrent, Ks);
+							ComputeColor(&vCurrent, cCurrent, cCurrent, Ks, Xinvert);
 						}
 						break;
 					case GZ_COLOR:
@@ -955,9 +919,12 @@ void GzRender::FillBoundBox(GzEdge* e1, GzEdge* e2, GzEdge* e3,
 						vCurrent.color[2] = (e1->start.color[2] + e2->start.color[2] + e3->start.color[2]) / 3;
 						break;
 					case GZ_SHADOWMAP:
-						vCurrent.color[0] = vCurrent.coord[2] / static_cast<float>((std::numeric_limits<int>::max)());
-						vCurrent.color[1] = vCurrent.coord[2] / static_cast<float>((std::numeric_limits<int>::max)());
-						vCurrent.color[2] = vCurrent.coord[2] / static_cast<float>((std::numeric_limits<int>::max)());
+						vCurrent.color[0] = SHADOW_MAP_IMAGE_INTENSITY_FACTOR<float> *
+							vCurrent.coord[2] / static_cast<float>((std::numeric_limits<int>::max)());
+						vCurrent.color[1] = SHADOW_MAP_IMAGE_INTENSITY_FACTOR<float> *
+							vCurrent.coord[2] / static_cast<float>((std::numeric_limits<int>::max)());
+						vCurrent.color[2] = SHADOW_MAP_IMAGE_INTENSITY_FACTOR<float> *
+							vCurrent.coord[2] / static_cast<float>((std::numeric_limits<int>::max)());
 						break;
 					default:
 						memcpy(vCurrent.color, flatcolor, sizeof(GzColor));
@@ -1052,9 +1019,13 @@ void GzRender::ExtractRotation(GzMatrix input, GzMatrix output)
 	output[3][3] = 1;
 }
 
-void GzRender::ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks)
+void GzRender::ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks, GzMatrix Xinvert)
 {
-	float eDotR, lDotN, eDotN;
+	bool inShadow = false;
+	int lightSpaceX, lightSpaceY;
+	float eDotR, lDotN, eDotN, screenSpaceCoord[4], lightSpaceCoordHomogenous[4];
+	GzIntensity rShadow, gShadow, bShadow, aShadow;
+	GzDepth zShadow;
 	GzCoord vEye{}, vReflection{}, vLight{}, vNormal{};
 
 	memcpy(vEye, EYE, sizeof(GzCoord));
@@ -1068,6 +1039,45 @@ void GzRender::ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks)
 	// specular and diffuse for each light
 	for (int i = 0; i < numlights; i++)
 	{
+		if (use_shadow_map && interp_mode == GZ_NORMALS && (GzRender*)(lights[i].shadow_map_renderer) != nullptr)
+		{
+			// Create screen space x,y,z coordinates to homogenous coordinates (used for Xls matrix multiplication) (needs to be a 4x1 matrix)
+			memcpy(screenSpaceCoord, v->coord, sizeof(GzCoord));
+			screenSpaceCoord[3] = static_cast<float>(1);
+
+			// Transfrom screen space coordinates to light space coordinates
+			TranslateCoord(Xinvert, screenSpaceCoord, lightSpaceCoordHomogenous);
+
+			// Convet from homogenous coordinates to cartesian coordinates
+			screenSpaceCoord[0] = lightSpaceCoordHomogenous[0] / lightSpaceCoordHomogenous[3];
+			screenSpaceCoord[1] = lightSpaceCoordHomogenous[1] / lightSpaceCoordHomogenous[3];
+			screenSpaceCoord[2] = lightSpaceCoordHomogenous[2] / lightSpaceCoordHomogenous[3];
+			screenSpaceCoord[3] = static_cast<float>(1);
+
+			TranslateCoord(((GzRender*)(lights[i].shadow_map_renderer))->Ximage[matlevel], screenSpaceCoord, lightSpaceCoordHomogenous);
+			v->shadow[0] = lightSpaceCoordHomogenous[0] / lightSpaceCoordHomogenous[3];
+			v->shadow[1] = lightSpaceCoordHomogenous[1] / lightSpaceCoordHomogenous[3];
+			v->shadow[2] = lightSpaceCoordHomogenous[2] / lightSpaceCoordHomogenous[3];
+
+			NearestNeighbor(v->shadow, &lightSpaceX, &lightSpaceY);
+			((GzRender*)(lights[i].shadow_map_renderer))->GzGet(lightSpaceX, lightSpaceY, &rShadow, &gShadow, &bShadow, &aShadow, &zShadow);
+
+			if (abs(v->shadow[2] - zShadow) > SHADOW_BIAS<float>)
+			{
+				inShadow = true;
+#ifdef GZ_DEBUG_MODE
+				OutputDebugStringA("In shadow!\n");
+#endif
+			}
+			else
+			{
+				inShadow = false;
+#ifdef GZ_DEBUG_MODE
+				OutputDebugStringA("Not in shadow!\n");
+#endif
+			}
+		}
+
 		memcpy(vLight, lights[i].direction, sizeof(GzCoord));
 		NormalizeVector(3, vLight);
 
@@ -1091,13 +1101,26 @@ void GzRender::ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks)
 		NormalizeVector(3, vReflection);
 		eDotR = DotProduct(3, vEye, vReflection);
 
-		v->color[0] += ks[0] * lights[i].color[0] * powf(eDotR, spec);
-		v->color[1] += ks[1] * lights[i].color[1] * powf(eDotR, spec);
-		v->color[2] += ks[2] * lights[i].color[2] * powf(eDotR, spec);
+		if (inShadow)
+		{
+			v->color[0] += SHADOW_KS[0] * lights[i].color[0] * powf(eDotR, spec);
+			v->color[1] += SHADOW_KS[1] * lights[i].color[1] * powf(eDotR, spec);
+			v->color[2] += SHADOW_KS[2] * lights[i].color[2] * powf(eDotR, spec);
 
-		v->color[0] += kd[0] * lights[i].color[0] * lDotN;
-		v->color[1] += kd[1] * lights[i].color[1] * lDotN;
-		v->color[2] += kd[2] * lights[i].color[2] * lDotN;
+			v->color[0] += SHADOW_KD[0] * lights[i].color[0] * lDotN;
+			v->color[1] += SHADOW_KD[1] * lights[i].color[1] * lDotN;
+			v->color[2] += SHADOW_KD[2] * lights[i].color[2] * lDotN;
+		}
+		else
+		{
+			v->color[0] += ks[0] * lights[i].color[0] * powf(eDotR, spec);
+			v->color[1] += ks[1] * lights[i].color[1] * powf(eDotR, spec);
+			v->color[2] += ks[2] * lights[i].color[2] * powf(eDotR, spec);
+
+			v->color[0] += kd[0] * lights[i].color[0] * lDotN;
+			v->color[1] += kd[1] * lights[i].color[1] * lDotN;
+			v->color[2] += kd[2] * lights[i].color[2] * lDotN;
+		}
 	}
 
 	v->color[0] = CLAMP(v->color[0], 0.0f, 1.0f);

@@ -21,6 +21,7 @@ constexpr auto MAX_LIGHTS = 10;	/* how many lights allowed */
 // some of them, like PI and IDENTITY, should never be changed
 // others, can be changed, read the symbol name for exact meaning
 template<typename T> constexpr T PI = T(3.14159265358979323846);
+template<typename T> constexpr T SHADOW_MAP_IMAGE_INTENSITY_FACTOR = T(0.75);
 template<typename T> constexpr T SHADOW_BIAS = T(0.5);
 template<typename T> constexpr T SHADOW_DIFFUSE_FACTOR = T(0.5);
 template<typename T> constexpr T SHADOW_SPECULAR_FACTOR = T(0.7);
@@ -87,7 +88,7 @@ public:
 	unsigned short	yres;
 	GzPixel* pixelbuffer;		/* frame buffer array */
 	char* framebuffer;
-	GzRender* shadow_map_renderer;
+	bool  use_shadow_map;
 
 	GzCamera	m_camera;
 	short		matlevel;	        /* top of stack - current xform */
@@ -141,7 +142,7 @@ public:
 	int GzScaleMat(GzCoord scale, GzMatrix mat);
 
 	// methods needed for shadow mapping
-	int GzSetShadowRenderer(GzRender* renderer);
+	int GzSetShadowMap(bool in);
 
 private:
 	typedef struct {
@@ -229,7 +230,7 @@ private:
 	void NormalizeVector(long size, float v[]);
 	void MultiplyMatrices(GzMatrix a, GzMatrix b, GzMatrix result);
 	void TranslateCoord(GzMatrix a, float b[4], float result[4]);
-	void ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks);
+	void ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks, GzMatrix Xls);
 	void InterpolateNormal(GzNormalPlane* p, float x, float y, GzCoord n);
 	void InterpolateUv(GzUvPlane* p, float x, float y, GzTextureIndex uv);
 	void NearestNeighbor(GzCoord in, int* outX, int* outY);

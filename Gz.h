@@ -81,6 +81,7 @@ typedef struct  GzLight
 {
 	GzCoord		direction; 	/* vector from surface to light */
 	GzColor		color;		/* light color intensity */
+	GzPointer	shadow_map_renderer;
 } GzLight;
 #endif
 
@@ -120,3 +121,8 @@ typedef	struct {
 
 #define	MAXXRES	1024	/* put some bounds on size in case of error */
 #define	MAXYRES	1024
+
+// debug mode
+#if true
+#define GZ_DEBUG_MODE
+#endif

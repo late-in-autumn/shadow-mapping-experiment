@@ -1,4 +1,4 @@
-#if !defined(AFX_TRANSLATEDLG_H__6A9F2403_0CB5_43AD_8F54_0DEB8C3A1A5A__INCLUDED_)
+﻿#if !defined(AFX_TRANSLATEDLG_H__6A9F2403_0CB5_43AD_8F54_0DEB8C3A1A5A__INCLUDED_)
 #define AFX_TRANSLATEDLG_H__6A9F2403_0CB5_43AD_8F54_0DEB8C3A1A5A__INCLUDED_
 
 #if _MSC_VER > 1000
@@ -12,14 +12,14 @@
 
 class CTranslateDlg : public CDialog
 {
-// Construction
+	// Construction
 public:
 	CTranslateDlg(CWnd* pParent = NULL);   // standard constructor
 	void Initialize(float tx, float ty, float tz);
 
 
-// Dialog Data
-	//{{AFX_DATA(CTranslateDlg)
+	// Dialog Data
+		//{{AFX_DATA(CTranslateDlg)
 	enum { IDD = IDD_TRANSLATE };
 	float	m_fTx;
 	float	m_fTy;
@@ -30,7 +30,7 @@ public:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CTranslateDlg)
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	//}}AFX_VIRTUAL
 

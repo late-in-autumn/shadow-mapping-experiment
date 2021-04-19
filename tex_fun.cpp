@@ -49,14 +49,18 @@ int tex_fun(float u, float v, GzColor color)
 		fd = fopen("texture", "rb");
 		if (fd == nullptr)
 		{
+#ifdef GZ_DEBUG_MODE
 			OutputDebugStringA("texture file not found\n");
+#endif
 			exit(-1);
 		}
 		fscanf(fd, "%s %d %d %c", foo, &xs, &ys, &dummy);
 		image = (GzColor*)malloc(sizeof(GzColor) * (xs + 1) * (ys + 1));
 		if (image == nullptr)
 		{
+#ifdef GZ_DEBUG_MODE
 			OutputDebugStringA("malloc for texture image failed\n");
+#endif
 			exit(-1);
 		}
 
@@ -97,7 +101,9 @@ int ptex_fun(float u, float v, GzColor color)
 {
 	if (reset) // generate four random colors for the four quadrants
 	{
+#ifdef GZ_DEBUG_MODE
 		OutputDebugStringA("Initializing procedural texture with four random colors...\n");
+#endif
 		for (int i = 0; i < NUM_QUADRANTS; i++)
 		{
 			randomColors[i][RED] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
