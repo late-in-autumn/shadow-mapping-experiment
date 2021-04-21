@@ -91,26 +91,26 @@ int Application5::Initialize()
 	/* Translation matrix */
 	GzMatrix	scale =
 	{
-		3.25,	0.0,	0.0,	0.0,
-		0.0,	3.25,	0.0,	-3.25,
-		0.0,	0.0,	3.25,	3.5,
-		0.0,	0.0,	0.0,	1.0
+		3.25f,	0.0f,	0.0f,	0.0f,
+		0.0f,	3.25f,	0.0f,	-3.25f,
+		0.0f,	0.0f,	3.25f,	3.5f,
+		0.0f,	0.0f,	0.0f,	1.0f
 	};
 
 	GzMatrix	rotateX =
 	{
-		1.0,	0.0,	0.0,	0.0,
-		0.0,	.7071,	.7071,	0.0,
-		0.0,	-.7071,	.7071,	0.0,
-		0.0,	0.0,	0.0,	1.0
+		1.0f,	0.0f,	0.0f,	0.0f,
+		0.0f,	.7071f,	0.7071f,	0.0f,
+		0.0f,	-.7071f,	0.7071f,	0.0f,
+		0.0f,	0.0f,	0.0f,	1.0f
 	};
 
 	GzMatrix	rotateY =
 	{
-		.866,	0.0,	-0.5,	0.0,
-		0.0,	1.0,	0.0,	0.0,
-		0.5,	0.0,	.866,	0.0,
-		0.0,	0.0,	0.0,	1.0
+		0.866f,	0.0f,	-0.5f,	0.0f,
+		0.0f,	1.0f,	0.0f,	0.0f,
+		0.5f,	0.0f,	0.866f,	0.0f,
+		0.0f,	0.0f,	0.0f,	1.0f
 	};
 
 	/* The depthmap is currently only rendered with 1 light source -- light1.
@@ -132,49 +132,49 @@ int Application5::Initialize()
 	*/
 
 	// Light position was modified to match the light1 position
-	lightCamera[0].position[X] = -0.7071;
-	lightCamera[0].position[Y] = 20.0;
-	lightCamera[0].position[Z] = -15;
-	lightCamera[0].lookat[X] = 4.5;
-	lightCamera[0].lookat[Y] = 0.7;
-	lightCamera[0].lookat[Z] = 6.5;
-	lightCamera[0].worldup[X] = -0.2;
-	lightCamera[0].worldup[Y] = 1.0;
-	lightCamera[0].worldup[Z] = 0.0;
-	lightCamera[0].FOV = 60;              /* degrees */
+	lightCamera[0].position[X] = -0.7071f;
+	lightCamera[0].position[Y] = 20.0f;
+	lightCamera[0].position[Z] = -15.0f;
+	lightCamera[0].lookat[X] = 4.5f;
+	lightCamera[0].lookat[Y] = 0.7f;
+	lightCamera[0].lookat[Z] = 6.5f;
+	lightCamera[0].worldup[X] = -0.2f;
+	lightCamera[0].worldup[Y] = 1.0f;
+	lightCamera[0].worldup[Z] = 0.0f;
+	lightCamera[0].FOV = 60.0f;              /* degrees */
 	status |= m_pShadowMapRender[0]->GzPutCamera(lightCamera[0]);
 
-	lightCamera[1].position[X] = 5.0;
-	lightCamera[1].position[Y] = 28.0;
-	lightCamera[1].position[Z] = -2.0;
-	lightCamera[1].lookat[X] = -4.5;
-	lightCamera[1].lookat[Y] = -5.7;
-	lightCamera[1].lookat[Z] = 6.5;
-	lightCamera[1].worldup[X] = -0.2;
-	lightCamera[1].worldup[Y] = 1.0;
-	lightCamera[1].worldup[Z] = 0.0;
-	lightCamera[1].FOV = 60;
+	lightCamera[1].position[X] = 5.0f;
+	lightCamera[1].position[Y] = 28.0f;
+	lightCamera[1].position[Z] = -2.0f;
+	lightCamera[1].lookat[X] = -4.5f;
+	lightCamera[1].lookat[Y] = -5.7f;
+	lightCamera[1].lookat[Z] = 6.5f;
+	lightCamera[1].worldup[X] = -0.2f;
+	lightCamera[1].worldup[Y] = 1.0f;
+	lightCamera[1].worldup[Z] = 0.0f;
+	lightCamera[1].FOV = 63.0f;
 	status |= m_pShadowMapRender[1]->GzPutCamera(lightCamera[1]);
 
-#if false 	/* set up app-defined camera if desired, else use camera defaults */
+#if true 	/* set up app-defined camera if desired, else use camera defaults */
 #if true   // use modified camera positions to get a better view of the teapot
-	camera.position[X] = 5.2;
-	camera.position[Y] = 25.7;
-	camera.position[Z] = 10.8;
+	camera.position[X] = 5.2f;
+	camera.position[Y] = 25.7f;
+	camera.position[Z] = 10.8f;
 #else
-	camera.position[X] = 10.2;
-	camera.position[Y] = 1.7;
-	camera.position[Z] = 10.8;
+	camera.position[X] = 10.2f;
+	camera.position[Y] = 1.7f;
+	camera.position[Z] = 10.8f;
 #endif
-	camera.lookat[X] = 7.8;
-	camera.lookat[Y] = 0.7;
-	camera.lookat[Z] = 6.5;
+	camera.lookat[X] = 7.8f;
+	camera.lookat[Y] = 0.7f;
+	camera.lookat[Z] = 6.5f;
 
-	camera.worldup[X] = -0.2;
-	camera.worldup[Y] = 1.0;
-	camera.worldup[Z] = 0.0;
+	camera.worldup[X] = -0.2f;
+	camera.worldup[Y] = 1.0f;
+	camera.worldup[Z] = 0.0f;
 
-	camera.FOV = 63.7;              /* degrees */
+	camera.FOV = 63.7f;              /* degrees */
 	status |= m_pRender->GzPutCamera(camera);
 #endif 
 
@@ -184,15 +184,15 @@ int Application5::Initialize()
 	status |= m_pRender->GzBeginRender();
 
 	/* Lights */
-	GzLight	light1 = { {-0.7071, 20.0, -15}, {0.3, 0.6, 0.9}, (GzPointer)m_pShadowMapRender[0] };
-	GzLight light2 = { {5.0, 28.0, -2.0}, {0.9, 0.2, 0.3},  (GzPointer)m_pShadowMapRender[1] };
-	// GzLight light3 = { {0.7071, 0.0, -0.7071}, {0.2, 0.7, 0.3} }; <- the third light that we can add if we want
-	GzLight	ambientlight = { {0, 0, 0}, {0.2, 0.4, 0.8} };
+	GzLight	light1 = { {-0.7071f, 20.0f, -15.0f}, {0.3f, 0.6f, 0.9f}, (GzPointer)m_pShadowMapRender[0] };
+	GzLight light2 = { {5.0f, 28.0f, -2.0f}, {0.9f, 0.2f, 0.3f},  (GzPointer)m_pShadowMapRender[1] };
+	// GzLight light3 = { {0.7071f, 0.0f, -0.7071f}, {0.2f, 0.7f, 0.3f} }; <- the third light that we can add if we want
+	GzLight	ambientlight = { {0.0f, 0.0f, 0.0f}, {0.2f, 0.4f, 0.8f} };
 
 	/* Material property */
-	GzColor specularCoefficient = { 0.3, 0.3, 0.3 };
-	GzColor ambientCoefficient = { 0.1, 0.1, 0.1 };
-	GzColor diffuseCoefficient = { 0.7, 0.7, 0.7 };
+	GzColor specularCoefficient = { 0.3f, 0.3f, 0.3f };
+	GzColor ambientCoefficient = { 0.1f, 0.1f, 0.1f };
+	GzColor diffuseCoefficient = { 0.7f, 0.7f, 0.7f };
 
 	/*
 	  renderer is ready for frame --- define lights and shader at start of frame

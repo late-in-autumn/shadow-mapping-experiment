@@ -9,7 +9,9 @@
 #include	<fstream>
 #include	<limits>
 #include	<new>
+#ifdef GZ_DEBUG_MODE
 #include	<string>
+#endif
 
 int GzRender::GzRotXMat(float degree, GzMatrix mat)
 {
@@ -1027,6 +1029,7 @@ void GzRender::ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks, GzM
 	GzIntensity rShadow, gShadow, bShadow, aShadow;
 	GzDepth zShadow;
 	GzCoord vEye{}, vReflection{}, vLight{}, vNormal{};
+	GzMatrix Xls{};
 
 	memcpy(vEye, EYE, sizeof(GzCoord));
 	memcpy(vNormal, v->normal, sizeof(GzCoord));
@@ -1041,20 +1044,15 @@ void GzRender::ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks, GzM
 	{
 		if (use_shadow_map && interp_mode == GZ_NORMALS && (GzRender*)(lights[i].shadow_map_renderer) != nullptr)
 		{
+			MultiplyMatrices(((GzRender*)(lights[i].shadow_map_renderer))->Ximage[matlevel], Xinvert, Xls);
+
 			// Create screen space x,y,z coordinates to homogenous coordinates (used for Xls matrix multiplication) (needs to be a 4x1 matrix)
 			memcpy(screenSpaceCoord, v->coord, sizeof(GzCoord));
 			screenSpaceCoord[3] = static_cast<float>(1);
 
 			// Transfrom screen space coordinates to light space coordinates
-			TranslateCoord(Xinvert, screenSpaceCoord, lightSpaceCoordHomogenous);
+			TranslateCoord(Xls, screenSpaceCoord, lightSpaceCoordHomogenous);
 
-			// Convet from homogenous coordinates to cartesian coordinates
-			screenSpaceCoord[0] = lightSpaceCoordHomogenous[0] / lightSpaceCoordHomogenous[3];
-			screenSpaceCoord[1] = lightSpaceCoordHomogenous[1] / lightSpaceCoordHomogenous[3];
-			screenSpaceCoord[2] = lightSpaceCoordHomogenous[2] / lightSpaceCoordHomogenous[3];
-			screenSpaceCoord[3] = static_cast<float>(1);
-
-			TranslateCoord(((GzRender*)(lights[i].shadow_map_renderer))->Ximage[matlevel], screenSpaceCoord, lightSpaceCoordHomogenous);
 			v->shadow[0] = lightSpaceCoordHomogenous[0] / lightSpaceCoordHomogenous[3];
 			v->shadow[1] = lightSpaceCoordHomogenous[1] / lightSpaceCoordHomogenous[3];
 			v->shadow[2] = lightSpaceCoordHomogenous[2] / lightSpaceCoordHomogenous[3];
@@ -1062,18 +1060,18 @@ void GzRender::ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks, GzM
 			NearestNeighbor(v->shadow, &lightSpaceX, &lightSpaceY);
 			((GzRender*)(lights[i].shadow_map_renderer))->GzGet(lightSpaceX, lightSpaceY, &rShadow, &gShadow, &bShadow, &aShadow, &zShadow);
 
-			if (abs(v->shadow[2] - zShadow) > SHADOW_BIAS<float>)
+			if (v->shadow[2] - zShadow > SHADOW_BIAS<float>)
 			{
 				inShadow = true;
 #ifdef GZ_DEBUG_MODE
-				OutputDebugStringA("In shadow!\n");
+				OutputDebugStringA(("In shadow for light " + std::to_string(i) + "\n").c_str());
 #endif
 			}
 			else
 			{
 				inShadow = false;
 #ifdef GZ_DEBUG_MODE
-				OutputDebugStringA("Not in shadow!\n");
+				OutputDebugStringA(("Not in shadow for light " + std::to_string(i) + "\n").c_str());
 #endif
 			}
 		}

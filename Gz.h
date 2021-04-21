@@ -123,6 +123,6 @@ typedef	struct {
 #define	MAXYRES	1024
 
 // debug mode
-#if true
+#if false
 #define GZ_DEBUG_MODE
 #endif
