@@ -1103,13 +1103,13 @@ void GzRender::ComputeColor(GzVertex* v, GzColor ka, GzColor kd, GzColor ks, GzM
 
 		if (inShadow)
 		{
-			v->color[0] += SHADOW_KS[0] * lights[i].color[0] * powf(eDotR, spec);
-			v->color[1] += SHADOW_KS[1] * lights[i].color[1] * powf(eDotR, spec);
-			v->color[2] += SHADOW_KS[2] * lights[i].color[2] * powf(eDotR, spec);
+			v->color[0] += SHADOW_KS[0] * ks[0] * lights[i].color[0] * powf(eDotR, spec);
+			v->color[1] += SHADOW_KS[1] * ks[1] * lights[i].color[1] * powf(eDotR, spec);
+			v->color[2] += SHADOW_KS[2] * ks[2] * lights[i].color[2] * powf(eDotR, spec);
 
-			v->color[0] += SHADOW_KD[0] * lights[i].color[0] * lDotN;
-			v->color[1] += SHADOW_KD[1] * lights[i].color[1] * lDotN;
-			v->color[2] += SHADOW_KD[2] * lights[i].color[2] * lDotN;
+			v->color[0] += SHADOW_KD[0] * kd[0] * lights[i].color[0] * lDotN;
+			v->color[1] += SHADOW_KD[1] * kd[1] * lights[i].color[1] * lDotN;
+			v->color[2] += SHADOW_KD[2] * kd[2] * lights[i].color[2] * lDotN;
 		}
 		else
 		{
